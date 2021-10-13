@@ -8,7 +8,7 @@
 	async function createLink({ restoreSession }) {
 		const result = await ConnectWallet({
 			linkOptions: {
-				endpoints: ["https://proton.greymass.com"],
+				endpoints: ["https://protontestnet.greymass.com"],
 				restoreSession,
 			},
 			transportOptions: {
@@ -39,6 +39,35 @@
 		// Create link
 		await createLink({ restoreSession: false });
 		console.log("User authorization:", session.auth); // { actor: 'fred', permission: 'active }
+	}
+
+	async function storeid() {
+
+		let principal_id = "ni5ro-t7fyc-jlbym-aople-hyrzq-xe4rd-tg3a2-slxfw-xkkbj-hr7wu-qqe";
+
+		// store the value
+		// Send Transaction
+		const result = await session.transact({
+			transaction: {
+				actions: [
+					{
+						// Token contract for btc records
+						account: "cronacle",
+						// Action name
+						name: "storeid",
+						// Action parameters
+						data: {
+							user: session.auth.actor,
+							principal: principal_id
+						},
+						authorization: [session.auth],
+					},
+				],
+			},
+			broadcast: true,
+		});
+		// console.log("Transaction ID", result.processed.id);
+
 	}
 
 
@@ -113,6 +142,7 @@
 	{#if session}
 		<h1>Account: {session.auth.actor}</h1>
 		<button class="app-button" on:click={storebtc}>Store BTC price</button>
+		<button class="app-button" on:click={storeid}>Store Id</button>
 		<button class="app-button" on:click={logout}>Logout</button>
 	{:else}
 		<button class="app-button" on:click={login}>Login</button>
