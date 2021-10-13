@@ -1,6 +1,9 @@
 <script>
 	import { onMount } from "svelte";
 	import { ConnectWallet } from "@proton/web-sdk";
+	import Auth from "./Auth.svelte"
+	import principal_id from "./Auth.svelte"
+
 	// Constants
 	const appIdentifier = "cronacle";
 	let link, session;
@@ -43,7 +46,8 @@
 
 	async function storeid() {
 
-		let principal_id = "ni5ro-t7fyc-jlbym-aople-hyrzq-xe4rd-tg3a2-slxfw-xkkbj-hr7wu-qqe";
+		//let principal_id = principal;
+		//alert(principal_id)
 
 		// store the value
 		// Send Transaction
@@ -140,6 +144,8 @@
 
 <main>
 	{#if session}
+		<Auth />
+		
 		<h1>Account: {session.auth.actor}</h1>
 		<button class="app-button" on:click={storebtc}>Store BTC price</button>
 		<button class="app-button" on:click={storeid}>Store Id</button>
