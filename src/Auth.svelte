@@ -14,8 +14,8 @@
     if (isAuthenticated) {
       const identity = client.getIdentity()
       principal = identity.getPrincipal().toString()
-      console.log("principal id = " + principal)
       principal_id = principal
+      console.log("Auth. already authenticated. principal_id = " + principal_id)      
       signedIn = true
     }
   }
@@ -33,6 +33,8 @@
       })
     })
     principal = result.principal
+    principal_id = principal
+    console.log("Auth. signed in. principal_id = " + principal_id)
     signedIn = true
   }
 
@@ -40,6 +42,8 @@
     await client.logout()
     signedIn = false
     principal = ""
+    principal_id = principal
+    console.log("Auth. signed out. principal_id = " + principal_id)
   }
 
   onMount(initAuth)

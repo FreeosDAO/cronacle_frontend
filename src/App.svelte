@@ -48,6 +48,7 @@
 
 		//let principal_id = principal;
 		//alert(principal_id)
+		console.log("App. principal_id = " + principal_id)
 
 		// store the value
 		// Send Transaction
