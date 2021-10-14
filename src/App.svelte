@@ -1,8 +1,54 @@
 <script>
 	import { onMount } from "svelte";
 	import { ConnectWallet } from "@proton/web-sdk";
-	import Auth from "./Auth.svelte"
-	import principal_id from "./Auth.svelte"
+
+	// from Auth
+	import { AuthClient } from "@dfinity/auth-client"
+
+	// from Auth
+	let signedIn = false
+	let client
+	let principal = ""
+
+	const initAuth = async () => {
+		client = await AuthClient.create()
+		const isAuthenticated = await client.isAuthenticated()
+
+		if (isAuthenticated) {
+		const identity = client.getIdentity()
+		principal = identity.getPrincipal().toString()
+		console.log("Auth. already authenticated. principal = " + principal)      
+		signedIn = true
+		}
+	}
+
+	const signIn = async () => {
+		const result = await new Promise((resolve, reject) => {
+		client.login({
+			identityProvider: "https://identity.ic0.app",
+			onSuccess: () => {
+			const identity = client.getIdentity()
+			const principal = identity.getPrincipal().toString()
+			resolve({ identity, principal })
+			},
+			onError: reject,
+		})
+		})
+		principal = result.principal
+		console.log("Auth. signed in. principal = " + principal)
+		signedIn = true
+	}
+
+	const signOut = async () => {
+		await client.logout()
+		signedIn = false
+		principal = ""
+		principal_id = principal
+		console.log("Auth. signed out. principal = " + principal)
+	}
+
+	onMount(initAuth)
+	// end of from Auth
 
 	// Constants
 	const appIdentifier = "cronacle";
@@ -48,7 +94,7 @@
 
 		//let principal_id = principal;
 		//alert(principal_id)
-		console.log("App. principal_id = " + principal_id)
+		console.log("App. principal = " + principal)
 
 		// store the value
 		// Send Transaction
@@ -63,7 +109,7 @@
 						// Action parameters
 						data: {
 							user: session.auth.actor,
-							principal: principal_id
+							principal: principal
 						},
 						authorization: [session.auth],
 					},
@@ -145,7 +191,19 @@
 
 <main>
 	{#if session}
-		<Auth />
+	<div class="auth-section">
+
+		{#if !signedIn && client}
+		<button on:click={signIn} class="auth-button">
+			dfinity Sign In
+		</button>
+		{/if}
+	
+		{#if signedIn}
+		<p>Signed in as: {principal}</p>
+		<button on:click={signOut} class="auth-button">Sign out</button>
+		{/if}
+	</div>
 		
 		<h1>Account: {session.auth.actor}</h1>
 		<button class="app-button" on:click={storebtc}>Store BTC price</button>
@@ -182,4 +240,31 @@
 			max-width: none;
 		}
 	}
+
+	.auth-section {
+        padding: 1em;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        text-align: right;
+        position: fixed;
+        top: 0;
+        right: 0;
+    }
+
+    .auth-button {
+        color: black;
+        background: white;
+        padding: 0 2em;
+        border-radius: 60px;
+        font-size: 1em;
+        line-height: 40px;
+        height: 33px;
+        outline: 0;
+        border: 0;
+        cursor: pointer;
+        text-decoration: underline;
+        display: flex;
+        align-items: center;
+    }
 </style>

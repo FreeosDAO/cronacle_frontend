@@ -4,8 +4,7 @@
 
   let signedIn = false
   let client
-  let principal = ""
-  export let principal_id = ""
+  export let principal = ""
 
   const initAuth = async () => {
     client = await AuthClient.create()
