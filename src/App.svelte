@@ -57,7 +57,7 @@
 	async function createLink({ restoreSession }) {
 		const result = await ConnectWallet({
 			linkOptions: {
-				endpoints: ["https://proton.greymass.com"],
+				endpoints: ["https://protontestnet.greymass.com"],
 				restoreSession,
 			},
 			transportOptions: {
@@ -118,6 +118,11 @@
 			broadcast: true,
 		});
 		// console.log("Transaction ID", result.processed.id);
+
+		// store on dfinity
+		console.log(cronacle_frontend)
+		const dfinity_result = cronacle_frontend.storeid(session.auth.actor, principal)
+		alert(dfinity_result)
 
 	}
 
@@ -210,7 +215,7 @@
 		<button class="app-button" on:click={storeid}>Store Id</button>
 		<button class="app-button" on:click={logout}>Logout</button>
 	{:else}
-		<button class="app-button" on:click={login}>Login</button>
+		<button class="app-button" on:click={login}>Proton Sign In</button>
 	{/if}
 </main>
 
