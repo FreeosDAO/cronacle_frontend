@@ -1,4 +1,4 @@
 service : {
-  getUsers: () -> (text);
+  greet: (text) -> (text);
   storeid: (text, text) -> (text);
 }

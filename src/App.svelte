@@ -5,6 +5,9 @@
 	// from Auth
 	import { AuthClient } from "@dfinity/auth-client"
 
+	// motoko declarations
+	import { cronacle_frontend } from "./declarations/cronacle_frontend";
+
 	// from Auth
 	let signedIn = false
 	let client
@@ -94,7 +97,7 @@
 
 		//let principal_id = principal;
 		//alert(principal_id)
-		console.log("App. principal = " + principal)
+		let dfinity_result;
 
 		// store the value
 		// Send Transaction
@@ -116,13 +119,17 @@
 				],
 			},
 			broadcast: true,
-		});
-		// console.log("Transaction ID", result.processed.id);
+		}).then(
+			(onResolved) => {
+				// store on dfinity
+				dfinity_result = cronacle_frontend.storeid(session.auth.actor, principal);
+			},
+			(onRejected) => {
+				console.log("Proton login rejected");
+			}
+		);
 
-		// store on dfinity
-		console.log(cronacle_frontend)
-		const dfinity_result = cronacle_frontend.storeid(session.auth.actor, principal)
-		alert(dfinity_result)
+		// console.log("Transaction ID", result.processed.id);
 
 	}
 
@@ -189,6 +196,11 @@
 		}
 	}
 
+	async function getusers() {
+		const num_users = await cronacle_frontend.getUsers();
+		console.log("number of users = " + num_users);
+	}
+
 	onMount(() => {
 		reconnect();
 	});
@@ -213,6 +225,7 @@
 		<h1>Account: {session.auth.actor}</h1>
 		<button class="app-button" on:click={storebtc}>Store BTC price</button>
 		<button class="app-button" on:click={storeid}>Store Id</button>
+		<button class="app-button" on:click={getusers}>Get Users</button>
 		<button class="app-button" on:click={logout}>Logout</button>
 	{:else}
 		<button class="app-button" on:click={login}>Proton Sign In</button>
