@@ -46,7 +46,6 @@
 		await client.logout()
 		signedIn = false
 		principal = ""
-		principal_id = principal
 		console.log("Auth. signed out. principal = " + principal)
 	}
 
@@ -93,14 +92,13 @@
 		console.log("User authorization:", session.auth); // { actor: 'fred', permission: 'active }
 	}
 
-	async function storeid() {
+	async function storeid_proton() {
 
-		//let principal_id = principal;
-		//alert(principal_id)
 		let dfinity_result;
 
 		// store the value
 		// Send Transaction
+		
 		const result = await session.transact({
 			transaction: {
 				actions: [
@@ -119,18 +117,15 @@
 				],
 			},
 			broadcast: true,
-		}).then(
-			(onResolved) => {
-				// store on dfinity
-				dfinity_result = cronacle_frontend.storeid(session.auth.actor, principal);
-			},
-			(onRejected) => {
-				console.log("Proton login rejected");
-			}
-		);
+		});
+		
 
-		// console.log("Transaction ID", result.processed.id);
+		console.log("in storeid, principal = ", principal);
 
+	}
+
+	async function storeid_dfinity() {
+		dfinity_result = await cronacle_frontend.storeid("aaa", "bbb");			
 	}
 
 
@@ -224,7 +219,8 @@
 		
 		<h1>Account: {session.auth.actor}</h1>
 		<button class="app-button" on:click={storebtc}>Store BTC price</button>
-		<button class="app-button" on:click={storeid}>Store Id</button>
+		<button class="app-button" on:click={storeid_proton}>Store User on Proton</button>
+		<button class="app-button" on:click={storeid_dfinity}>Store User on dfinity</button>
 		<button class="app-button" on:click={getusers}>Get Users</button>
 		<button class="app-button" on:click={logout}>Logout</button>
 	{:else}
