@@ -5,9 +5,6 @@
 	// from Auth
 	import { AuthClient } from "@dfinity/auth-client"
 
-	// motoko declarations
-	import { cronacle_frontend } from "./declarations/cronacle_frontend";
-
 	// from Auth
 	let signedIn = false
 	let client
@@ -46,6 +43,7 @@
 		await client.logout()
 		signedIn = false
 		principal = ""
+		principal_id = principal
 		console.log("Auth. signed out. principal = " + principal)
 	}
 
@@ -59,7 +57,7 @@
 	async function createLink({ restoreSession }) {
 		const result = await ConnectWallet({
 			linkOptions: {
-				endpoints: ["https://protontestnet.greymass.com"],
+				endpoints: ["https://proton.greymass.com"],
 				restoreSession,
 			},
 			transportOptions: {
@@ -92,13 +90,14 @@
 		console.log("User authorization:", session.auth); // { actor: 'fred', permission: 'active }
 	}
 
-	async function storeid_proton() {
+	async function storeid() {
 
-		let dfinity_result;
+		//let principal_id = principal;
+		//alert(principal_id)
+		console.log("App. principal = " + principal)
 
 		// store the value
 		// Send Transaction
-		
 		const result = await session.transact({
 			transaction: {
 				actions: [
@@ -118,14 +117,13 @@
 			},
 			broadcast: true,
 		});
-		
+		// console.log("Transaction ID", result.processed.id);
 
-		console.log("in storeid, principal = ", principal);
+		// store on dfinity
+		console.log(cronacle_frontend)
+		const dfinity_result = cronacle_frontend.storeid(session.auth.actor, principal)
+		alert(dfinity_result)
 
-	}
-
-	async function storeid_dfinity() {
-		dfinity_result = await cronacle_frontend.storeid("aaa", "bbb");			
 	}
 
 
@@ -191,11 +189,6 @@
 		}
 	}
 
-	async function getusers() {
-		const num_users = await cronacle_frontend.getUsers();
-		console.log("number of users = " + num_users);
-	}
-
 	onMount(() => {
 		reconnect();
 	});
@@ -207,21 +200,19 @@
 
 		{#if !signedIn && client}
 		<button on:click={signIn} class="auth-button">
-			dfinity Sign In
+			Internet Identity Sign In
 		</button>
 		{/if}
 	
 		{#if signedIn}
-		<p>Signed in as: {principal}</p>
+		<h2>Signed in as: {principal}</h2>
 		<button on:click={signOut} class="auth-button">Sign out</button>
 		{/if}
 	</div>
 		
 		<h1>Account: {session.auth.actor}</h1>
 		<button class="app-button" on:click={storebtc}>Store BTC price</button>
-		<button class="app-button" on:click={storeid_proton}>Store User on Proton</button>
-		<button class="app-button" on:click={storeid_dfinity}>Store User on dfinity</button>
-		<button class="app-button" on:click={getusers}>Get Users</button>
+		<button class="app-button" on:click={storeid}>Store ID</button>
 		<button class="app-button" on:click={logout}>Logout</button>
 	{:else}
 		<button class="app-button" on:click={login}>Proton Sign In</button>
@@ -235,12 +226,20 @@
 		max-width: 240px;
 		margin: 0 auto;
 	}
-
+	
 	h1 {
 		color: #ff3e00;
+		padding: 2em;
 		text-transform: uppercase;
 		font-size: 2em;
 		font-weight: 100;
+	}
+
+	h2 {
+		color: black;
+		padding: 1em;
+		font-size: 0.5em;
+		font-weight: 50;
 	}
 
 	.app-button {

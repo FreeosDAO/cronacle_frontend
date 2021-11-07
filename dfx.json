@@ -9,11 +9,11 @@
         "cronacle_frontend"
       ],
       "frontend": {
-        "entrypoint": "src/cronacle_frontend_assets/src/index.html"
+        "entrypoint": "src/main.js"
       },
       "source": [
-        "src/cronacle_frontend_assets/assets",
-        "dist/cronacle_frontend_assets/"
+        "src/assets",
+        "src/"
       ],
       "type": "assets"
     }
@@ -24,7 +24,7 @@
       "packtool": ""
     }
   },
-  "dfx": "0.8.0",
+  "dfx": "0.8.3",
   "networks": {
     "local": {
       "bind": "127.0.0.1:8000",

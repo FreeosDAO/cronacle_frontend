@@ -1,4 +1,5 @@
 # dfinity and Mac
+.dfx/
 public/*
 .DS_Store
 
