@@ -5,6 +5,9 @@
 	// from Auth
 	import { AuthClient } from "@dfinity/auth-client"
 
+	// motoko declarations
+	import { cronacle_frontend } from "../.dfx/local/canisters/cronacle_frontend";
+
 	// from Auth
 	let signedIn = false
 	let client
@@ -90,7 +93,7 @@
 		console.log("User authorization:", session.auth); // { actor: 'fred', permission: 'active }
 	}
 
-	async function storeid() {
+	async function proton_storeid() {
 
 		//let principal_id = principal;
 		//alert(principal_id)
@@ -124,6 +127,14 @@
 		const dfinity_result = cronacle_frontend.storeid(session.auth.actor, principal)
 		alert(dfinity_result)
 
+	}
+
+	async function ic_storeid() {
+		console.log("In ic_storeid")
+		console.log(principal)
+		console.log(session.auth.actor)
+		const dfinity_result = await cronacle_frontend.storeid(session.auth.actor, principal)
+		console.log(dfinity_result)
 	}
 
 
@@ -212,7 +223,8 @@
 		
 		<h1>Account: {session.auth.actor}</h1>
 		<button class="app-button" on:click={storebtc}>Store BTC price</button>
-		<button class="app-button" on:click={storeid}>Store ID</button>
+		<button class="app-button" on:click={proton_storeid}>Proton Store ID</button>
+		<button class="app-button" on:click={ic_storeid}>IC Store ID</button>
 		<button class="app-button" on:click={logout}>Logout</button>
 	{:else}
 		<button class="app-button" on:click={login}>Proton Sign In</button>

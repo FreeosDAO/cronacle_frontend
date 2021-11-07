@@ -11,13 +11,13 @@ actor {
         return "Hello, " # name # "!";
     };
 
-    public func storeid(proton_account : Text, principal_id : Text) : async Text {
+    public func storeid(proton_account : Text, ic_id : Text) : async Text {
         
-        users.put(proton_account, principal_id);
+        users.put(proton_account, ic_id);
 
         let numusers = users.size();
 
-        return principal_id # " and " # proton_account # ", number of users = " # Nat.toText(numusers);
+        return ic_id # " and " # proton_account # ", number of users = " # Nat.toText(numusers);
     };
 
     
