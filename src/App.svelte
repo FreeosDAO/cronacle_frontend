@@ -6,7 +6,7 @@
 	import { AuthClient } from "@dfinity/auth-client"
 
 	// motoko declarations
-	import { cronacle_frontend } from "../.dfx/local/canisters/cronacle_frontend";
+	import { cronacle_frontend } from "./declarations/cronacle_frontend";
 
 	// from Auth
 	let signedIn = false
