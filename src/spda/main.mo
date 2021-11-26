@@ -7,8 +7,8 @@ actor {
 
     let users = HashMap.HashMap<Text, Text>(16, Text.equal, Text.hash);
 
-    public func greet(name : Text) : async Text {
-        return "Hello, " # name # "!";
+    public func chat(name : Text) : async Text {
+        return "Hi there, " # name # "!";
     };
 
     public func storeid(proton_account : Text, ic_id : Text) : async Text {

@@ -6,7 +6,7 @@
 	import { AuthClient } from "@dfinity/auth-client"
 
 	// motoko declarations
-	import { cronacle_frontend } from "./declarations/cronacle_frontend";
+	import { spda } from "./declarations/spda";
 
 	// from Auth
 	let signedIn = false
@@ -122,18 +122,13 @@
 		});
 		// console.log("Transaction ID", result.processed.id);
 
-		// store on dfinity
-		console.log(cronacle_frontend)
-		const dfinity_result = cronacle_frontend.storeid(session.auth.actor, principal)
-		alert(dfinity_result)
-
 	}
 
 	async function ic_storeid() {
 		console.log("In ic_storeid")
 		console.log(principal)
 		console.log(session.auth.actor)
-		const dfinity_result = await cronacle_frontend.storeid(session.auth.actor, principal)
+		const dfinity_result = await spda.storeid(session.auth.actor, principal)
 		console.log(dfinity_result)
 	}
 

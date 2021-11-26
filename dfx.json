@@ -1,18 +1,17 @@
 {
   "canisters": {
-    "cronacle_frontend": {
-      "main": "src/cronacle_frontend/main.mo",
+    "spda": {
+      "main": "src/spda/main.mo",
       "type": "motoko"
     },
-    "cronacle_frontend_assets": {
+    "spda_assets": {
       "dependencies": [
-        "cronacle_frontend"
+        "spda"
       ],
       "frontend": {
         "entrypoint": "src/main.js"
       },
       "source": [
-        "src/assets",
         "src/"
       ],
       "type": "assets"
@@ -24,7 +23,7 @@
       "packtool": ""
     }
   },
-  "dfx": "0.8.3",
+  "dfx": "0.8.4",
   "networks": {
     "local": {
       "bind": "127.0.0.1:8000",

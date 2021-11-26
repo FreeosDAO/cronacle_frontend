@@ -1,11 +1,11 @@
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const path = require('path');
+const webpack = require("webpack");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin")
 
 const mode = process.env.NODE_ENV || 'development';
 const prod = mode === 'production';
 
-// added
 let localCanisters, prodCanisters, canisters;
 
 function initCanisterIds() {
@@ -30,9 +30,13 @@ function initCanisterIds() {
     process.env[canister.toUpperCase() + "_CANISTER_ID"] =
       canisters[canister][network];
   }
+
+  return process.env;
 }
-initCanisterIds();
-// end of added
+//initCanisterIds();
+const canisterEnvVariables = initCanisterIds();
+const frontendDirectory = "spda_assets";
+
 
 module.exports = {
 	entry: {
@@ -86,10 +90,25 @@ module.exports = {
 		new NodePolyfillPlugin(),
 		new MiniCssExtractPlugin({
 			filename: '[name].css'
-		})
+		}),
+		new webpack.EnvironmentPlugin({
+			NODE_ENV: "development",
+			...canisterEnvVariables,
+		  }),
 	],
 	devtool: prod ? false : 'source-map',
 	devServer: {
-		hot: true
-	}
+		proxy: {
+		  "/api": {
+			target: "http://localhost:8000",
+			changeOrigin: true,
+			pathRewrite: {
+			  "^/api": "/api",
+			},
+		  },
+		},
+		hot: true,
+		watchFiles: [path.resolve(__dirname, "src", frontendDirectory)],
+		liveReload: true,
+	  },
 };

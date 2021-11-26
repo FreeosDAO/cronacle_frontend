@@ -1,4 +1,4 @@
 service : {
-  greet: (text) -> (text);
+  chat: (text) -> (text);
   storeid: (text, text) -> (text);
 }

@@ -1,18 +1,19 @@
 import { Actor, HttpAgent } from "@dfinity/agent";
 
 // Imports and re-exports candid interface
-import { idlFactory } from './cronacle_frontend.did.js';
-export { idlFactory } from './cronacle_frontend.did.js';
+import { idlFactory } from './spda.did.js';
+export { idlFactory } from './spda.did.js';
 // CANISTER_ID is replaced by webpack based on node environment
-export const canisterId = process.env.CRONACLE_FRONTEND_CANISTER_ID;
+export const canisterId = process.env.SPDA_CANISTER_ID;
 
 /**
  * 
  * @param {string | import("@dfinity/principal").Principal} canisterId Canister ID of Agent
  * @param {{agentOptions?: import("@dfinity/agent").HttpAgentOptions; actorOptions?: import("@dfinity/agent").ActorConfig}} [options]
- * @return {import("@dfinity/agent").ActorSubclass<import("./cronacle_frontend.did.js")._SERVICE>}
+ * @return {import("@dfinity/agent").ActorSubclass<import("./spda.did.js")._SERVICE>}
  */
  export const createActor = (canisterId, options) => {
+   console.log(options);
   const agent = new HttpAgent({ ...options?.agentOptions });
   
   // Fetch root key for certificate validation during development
@@ -32,7 +33,7 @@ export const canisterId = process.env.CRONACLE_FRONTEND_CANISTER_ID;
 };
   
 /**
- * A ready-to-use agent for the cronacle_frontend canister
- * @type {import("@dfinity/agent").ActorSubclass<import("./cronacle_frontend.did.js")._SERVICE>}
+ * A ready-to-use agent for the spda canister
+ * @type {import("@dfinity/agent").ActorSubclass<import("./spda.did.js")._SERVICE>}
  */
- export const cronacle_frontend = createActor(canisterId);
+ export const spda = createActor(canisterId);
