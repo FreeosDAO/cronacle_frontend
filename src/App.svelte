@@ -47,7 +47,7 @@
 		signedIn = false
 		principal = ""
 		principal_id = principal
-		console.log("Auth. signed out. principal = " + principal)
+		console.log("Auth. signed out. principal id = " + principal)
 	}
 
 	onMount(initAuth)
