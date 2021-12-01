@@ -1,6 +1,10 @@
 <script>
 	import { onMount } from "svelte";
 	import { ConnectWallet } from "@proton/web-sdk";
+	const { JsonRpc } = require('eosjs');
+
+	// endpoint
+	const rpc = new JsonRpc("https://proton.greymass.com", { fetch })
 
 	// from Auth
 	import { AuthClient } from "@dfinity/auth-client"
@@ -12,6 +16,9 @@
 	let signedIn = false
 	let client
 	let principal = ""
+	let registered = false;
+	let registered_indicator = "";
+	let credit = "";
 
 	const initAuth = async () => {
 		client = await AuthClient.create()
@@ -50,7 +57,7 @@
 		console.log("Auth. signed out. principal id = " + principal)
 	}
 
-	onMount(initAuth)
+	onMount(initAuth)	// TODO - merge onMount code
 	// end of from Auth
 
 	// Constants
@@ -195,8 +202,99 @@
 		}
 	}
 
+	let result;
+
+	// fetch and parse data tables
+	async function fetchData() {
+
+		// if (typeof session !== "undefined") {
+		if (session) {
+			console.log('fetching user data for ' + session.auth.actor);
+
+			// is the user registered?
+			let registration_params = {
+					json: true,
+					code: 'cronacle', // account containing smart contract
+					scope: 'cronacle', // the subset of the table to query
+					table: 'users', // the name of the table
+					lower_bound: session.auth.actor,
+					limit: 1 // limit on number of rows returned
+			};
+
+			// specify lower_bound = username and limit = 1 to fetch a particular user
+
+			let registration_result = await rpc.get_table_rows(registration_params);
+
+			// Number of elements returned: result.rows.length;
+			// A particular value from the first element: result.rows[0].dfinity_principal
+
+			registered = registration_result.rows.length == 0 ? false : true;
+			registered_indicator = registered == true ? "(registered)" : "";
+
+			// the user's credit balance
+			let credit_params = {
+					json: true,
+					code: 'cronacle', // account containing smart contract
+					scope: session.auth.actor, // the subset of the table to query
+					table: 'credits', // the name of the table
+					//lower_bound: session.auth.actor,
+					limit: 1 // limit on number of rows returned
+			}
+
+			let credit_result = await rpc.get_table_rows(credit_params);
+
+			console.log("credit start")
+			if (credit_result.rows.length > 0) {
+				credit = credit_result.rows[0].amount;
+			} else {
+				credit = "";
+			}
+			console.log(credit);
+			console.log("credit end")
+		} 
+		
+
+		// Iterate over the registration records
+		// registration_result.rows.forEach(element => console.log(element.proton_account + " " + element.dfinity_principal));
+	}
+
+	async function reguser() {
+		console.log("registering " + session.auth.actor);
+
+		try {
+			const result = await session.transact({
+				transaction: {
+					actions: [
+						{
+							// Contract
+							account: "cronacle",
+							// Action name
+							name: "reguser",
+							// Action parameters
+							data: {
+								user: session.auth.actor
+							},
+							authorization: [session.auth],
+						},
+					],
+				},
+				broadcast: true,
+			});
+		} catch (e) {
+			console.log(e);
+		}
+
+		// console.log(result);
+	}
+
 	onMount(() => {
+		fetchData();
+		
 		reconnect();
+
+		const interval = setInterval(fetchData, 5000);
+
+		return () => clearInterval(interval);
 	});
 </script>
 
@@ -216,11 +314,15 @@
 		{/if}
 	</div>
 		
-		<h1>Account: {session.auth.actor}</h1>
+		<h1>{session.auth.actor} {registered_indicator}</h1>
+		<h2>{credit}</h2>
+		{#if session && !registered}
+		<button class="app-button" on:click={reguser}>Proton Register</button>
+		{/if}
 		<button class="app-button" on:click={storebtc}>Store BTC price</button>
 		<button class="app-button" on:click={proton_storeid}>Proton Store ID</button>
 		<button class="app-button" on:click={ic_storeid}>IC Store ID</button>
-		<button class="app-button" on:click={logout}>Logout</button>
+		<button class="app-button" on:click={logout}>Proton Logout</button>
 	{:else}
 		<button class="app-button" on:click={login}>Proton Sign In</button>
 	{/if}
@@ -235,9 +337,9 @@
 	}
 	
 	h1 {
-		color: #ff3e00;
+		color: #2600ff;
 		padding: 2em;
-		text-transform: uppercase;
+		text-transform: none;
 		font-size: 2em;
 		font-weight: 100;
 	}
