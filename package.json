@@ -24,6 +24,8 @@
     "@dfinity/principal": "0.10.0",
     "@proton/web-sdk": "^2.7.23",
     "eosjs": "^21.0.3",
+    "import": "0.0.6",
+    "svelte-table": "^0.3.1",
     "webpack-dev-server": "^4.5.0"
   }
 }

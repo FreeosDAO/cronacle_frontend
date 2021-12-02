@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from "svelte";
 	import { ConnectWallet } from "@proton/web-sdk";
+	import SvelteTable from "svelte-table";
 	const { JsonRpc } = require('eosjs');
 
 	// endpoint
@@ -202,7 +203,12 @@
 		}
 	}
 
-	let result;
+
+	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
+	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
+	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
+
+	let result = [];
 
 	// fetch and parse data tables
 	async function fetchData() {
