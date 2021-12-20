@@ -208,6 +208,35 @@
 	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
 	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
 
+	async function getNFTData() {
+		const response = await fetch('https://proton.api.atomicassets.io/atomicassets/v1/assets?owner=cronacle&page=1&limit=100&order=desc&sort=asset_id')
+		const nftdata = await response.json()
+		console.log("+++++++")
+		nftdata.data.forEach(nft => {
+			// Log each nft's title
+			console.log(">>>>>>>>>>>>>")
+			console.log("asset id: " + nft.asset_id)
+			console.log("image: " + nft.template.immutable_data.image)
+			console.log("collection: " + nft.collection.name)
+			console.log("template_mint: " + nft.template_mint)
+			console.log("template issued supply: " + nft.template.issued_supply)
+			console.log("series: " + nft.template.immutable_data.series)
+			console.log("name: " + nft.template.immutable_data.name)
+			console.log("description: " + nft.template.immutable_data.desc)
+		})
+		console.log("-------")
+
+		// display
+		const nftimage = document.getElementById("nftimage");
+		const nftname = document.getElementById("nftname")
+		const nftdesc = document.getElementById("nftdesc")
+
+		nftimage.src = "https://ipfs.io/ipfs/" + nftdata.data[0].template.immutable_data.image
+		nftname.textContent = "NFT " + nftdata.data[0].asset_id + ": " + nftdata.data[0].template.immutable_data.name + " (" + nftdata.data[0].template_mint + "/" + nftdata.data[0].template.issued_supply + ")"
+		nftdesc.textContent = nftdata.data[0].template.immutable_data.desc
+		
+	}
+
 	let result = [];
 
 	// fetch and parse data tables
@@ -257,7 +286,9 @@
 			}
 			console.log(credit);
 			console.log("credit end")
-		} 
+		}
+
+		getNFTData()
 		
 
 		// Iterate over the registration records
@@ -293,12 +324,13 @@
 		// console.log(result);
 	}
 
+
 	onMount(() => {
 		fetchData();
 		
 		reconnect();
 
-		const interval = setInterval(fetchData, 5000);
+		const interval = setInterval(fetchData, 10000);
 
 		return () => clearInterval(interval);
 	});
@@ -332,6 +364,21 @@
 	{:else}
 		<button class="app-button" on:click={login}>Proton Sign In</button>
 	{/if}
+
+	<div>
+		<div id="container1" class="container">
+			<!-- svelte-ignore a11y-img-redundant-alt -->
+			<img
+				src=""
+				id="nftimage"
+				alt="nft image"
+				width="400px"
+				height="auto" />
+			<p id="nftname"></p>
+			<p id="nftdesc"></p>
+			<button class="app-button" on:click={login}>Bid</button>
+		</div>
+	</div>
 </main>
 
 <style>
@@ -395,4 +442,5 @@
         display: flex;
         align-items: center;
     }
+
 </style>
