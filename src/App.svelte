@@ -4,8 +4,9 @@
 	import SvelteTable from "svelte-table";
 	const { JsonRpc } = require('eosjs');
 
-	// endpoint
+	// endpoints
 	const rpc = new JsonRpc("https://proton.greymass.com", { fetch })
+	const rpctestnet = new JsonRpc("https://protontestnet.greymass.com", { fetch })
 
 	// from Auth
 	import { AuthClient } from "@dfinity/auth-client"
@@ -211,33 +212,40 @@
 	async function getNFTData() {
 		const response = await fetch('https://proton.api.atomicassets.io/atomicassets/v1/assets?owner=cronacle&page=1&limit=100&order=desc&sort=asset_id')
 		const nftdata = await response.json()
-		console.log("+++++++")
-		nftdata.data.forEach(nft => {
+
+		//nftdata.data.forEach(nft => {
 			// Log each nft's title
-			console.log(">>>>>>>>>>>>>")
-			console.log("asset id: " + nft.asset_id)
-			console.log("image: " + nft.template.immutable_data.image)
-			console.log("collection: " + nft.collection.name)
-			console.log("template_mint: " + nft.template_mint)
-			console.log("template issued supply: " + nft.template.issued_supply)
-			console.log("series: " + nft.template.immutable_data.series)
-			console.log("name: " + nft.template.immutable_data.name)
-			console.log("description: " + nft.template.immutable_data.desc)
-		})
-		console.log("-------")
+			//console.log(">>>>>>>>>>>>>")
+			//console.log("asset id: " + nft.asset_id)
+			//console.log("image: " + nft.template.immutable_data.image)
+			//console.log("collection: " + nft.collection.name)
+			//console.log("template_mint: " + nft.template_mint)
+			//console.log("template issued supply: " + nft.template.issued_supply)
+			//console.log("series: " + nft.template.immutable_data.series)
+			//console.log("name: " + nft.template.immutable_data.name)
+			//console.log("description: " + nft.template.immutable_data.desc)
+		//})
 
-		// display
-		const nftimage = document.getElementById("nftimage");
-		const nftname = document.getElementById("nftname")
-		const nftdesc = document.getElementById("nftdesc")
+		// display nft info
+		// nft 1
+		const nft1image = document.getElementById("nft1_image");
+		const nft1name = document.getElementById("nft1_name")
+		const nft1desc = document.getElementById("nft1_desc")
 
-		nftimage.src = "https://ipfs.io/ipfs/" + nftdata.data[0].template.immutable_data.image
-		nftname.textContent = "NFT " + nftdata.data[0].asset_id + ": " + nftdata.data[0].template.immutable_data.name + " (" + nftdata.data[0].template_mint + "/" + nftdata.data[0].template.issued_supply + ")"
-		nftdesc.textContent = nftdata.data[0].template.immutable_data.desc
+		nft1image.src = "https://ipfs.io/ipfs/" + nftdata.data[0].template.immutable_data.image
+		nft1name.textContent = "NFT " + nftdata.data[0].asset_id + ": " + nftdata.data[0].template.immutable_data.name + " (" + nftdata.data[0].template_mint + "/" + nftdata.data[0].template.issued_supply + ")"
+		nft1desc.textContent = nftdata.data[0].template.immutable_data.desc
+
+		// nft 2
+		const nft2image = document.getElementById("nft2_image");
+		const nft2name = document.getElementById("nft2_name")
+		const nft2desc = document.getElementById("nft2_desc")
+
+		nft2image.src = "https://ipfs.io/ipfs/" + nftdata.data[1].template.immutable_data.image
+		nft2name.textContent = "NFT " + nftdata.data[1].asset_id + ": " + nftdata.data[1].template.immutable_data.name + " (" + nftdata.data[1].template_mint + "/" + nftdata.data[1].template.issued_supply + ")"
+		nft2desc.textContent = nftdata.data[1].template.immutable_data.desc
 		
 	}
-
-	let result = [];
 
 	// fetch and parse data tables
 	async function fetchData() {
@@ -250,21 +258,21 @@
 			let registration_params = {
 					json: true,
 					code: 'cronacle', // account containing smart contract
-					scope: 'cronacle', // the subset of the table to query
+					scope: session.auth.actor, // the subset of the table to query
 					table: 'users', // the name of the table
 					lower_bound: session.auth.actor,
 					limit: 1 // limit on number of rows returned
 			};
 
-			// specify lower_bound = username and limit = 1 to fetch a particular user
-
 			let registration_result = await rpc.get_table_rows(registration_params);
+			console.log(registration_result.rows.length + " user records returned")
 
 			// Number of elements returned: result.rows.length;
 			// A particular value from the first element: result.rows[0].dfinity_principal
 
-			registered = registration_result.rows.length == 0 ? false : true;
-			registered_indicator = registered == true ? "(registered)" : "";
+			let registered = registration_result.rows.length == 0 ? false : true;
+			let registered_indicator = registered == true ? "(registered)" : "";
+			console.log("registered_indicator = " + registered_indicator)
 
 			// the user's credit balance
 			let credit_params = {
@@ -278,14 +286,12 @@
 
 			let credit_result = await rpc.get_table_rows(credit_params);
 
-			console.log("credit start")
+			//console.log("credit start")
 			if (credit_result.rows.length > 0) {
 				credit = credit_result.rows[0].amount;
 			} else {
 				credit = "";
 			}
-			console.log(credit);
-			console.log("credit end")
 		}
 
 		getNFTData()
@@ -324,12 +330,19 @@
 		// console.log(result);
 	}
 
+	let bidamount = "1.000000 FOOBAR";
+
+	async function bid() {
+
+		
+	}
+
 
 	onMount(() => {
-		fetchData();
 		
 		reconnect();
 
+		fetchData();	// i'd like to fetch data as soon as the page loads, but this doesn't seem to work
 		const interval = setInterval(fetchData, 10000);
 
 		return () => clearInterval(interval);
@@ -353,7 +366,7 @@
 	</div>
 		
 		<h1>{session.auth.actor} {registered_indicator}</h1>
-		<h2>{credit}</h2>
+		<h2>Credit: {credit}</h2>
 		{#if session && !registered}
 		<button class="app-button" on:click={reguser}>Proton Register</button>
 		{/if}
@@ -366,17 +379,34 @@
 	{/if}
 
 	<div>
+		<h3>Current Auction</h3>
 		<div id="container1" class="container">
 			<!-- svelte-ignore a11y-img-redundant-alt -->
 			<img
 				src=""
-				id="nftimage"
+				id="nft1_image"
 				alt="nft image"
-				width="400px"
+				width="300px"
 				height="auto" />
-			<p id="nftname"></p>
-			<p id="nftdesc"></p>
-			<button class="app-button" on:click={login}>Bid</button>
+			<p id="nft1_name"></p>
+			<p id="nft1_desc"></p>
+			<button class="app-button" on:click={bid}>Bid</button>
+			<input type="number" min="1" /> FOOBAR
+		</div>
+	</div>
+
+	<div>
+		<h3>Next Auction</h3>
+		<div id="container2" class="container">
+			<!-- svelte-ignore a11y-img-redundant-alt -->
+			<img
+				src=""
+				id="nft2_image"
+				alt="nft image"
+				width="200px"
+				height="auto" />
+			<p id="nft2_name"></p>
+			<p id="nft2_desc"></p>
 		</div>
 	</div>
 </main>
