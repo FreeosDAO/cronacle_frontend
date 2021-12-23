@@ -6,8 +6,7 @@
 
 	// endpoints
 	const rpc = new JsonRpc("https://proton.greymass.com", { fetch })
-	const rpctestnet = new JsonRpc("https://protontestnet.greymass.com", { fetch })
-
+	
 	// from Auth
 	import { AuthClient } from "@dfinity/auth-client"
 
@@ -247,6 +246,38 @@
 		
 	}
 
+	let bid1 = ""
+	let bid2 = ""
+	let bid3 = ""
+
+	async function getBidsData() {
+		if (session) {
+			console.log('fetching top 3 bids');
+
+			let bids_params = {
+				json: true,
+				code: 'cronacle', // account containing smart contract
+				scope: 'cronacle', // the subset of the table to query
+				table: 'bids', // the name of the table
+				index_position: 2,	// secondary index
+				key_type: 'i64',
+				reverse: true,
+				limit: 3 // limit on number of rows returned
+			};
+
+			let bids_result = await rpc.get_table_rows(bids_params);
+			console.log(bids_result.rows.length + " bid records returned");
+
+			bids_result.rows.forEach(bid => {
+				console.log(bid.bidder + " : " + bid.bidamount)
+			})
+
+			bid1 = bids_result.rows[0].bidder + " : " + bids_result.rows[0].bidamount
+			bid2 = bids_result.rows[1].bidder + " : " + bids_result.rows[1].bidamount
+			bid3 = bids_result.rows[2].bidder + " : " + bids_result.rows[2].bidamount
+		}
+	}
+
 	// fetch and parse data tables
 	async function fetchData() {
 
@@ -294,7 +325,8 @@
 			}
 		}
 
-		getNFTData()
+		getNFTData();
+		getBidsData();
 		
 
 		// Iterate over the registration records
@@ -342,7 +374,7 @@
 		
 		reconnect();
 
-		fetchData();	// i'd like to fetch data as soon as the page loads, but this doesn't seem to work
+		fetchData();	// i'd like to fetch data as soon as the page loads, but this doesn't seem to work (maybe it is, but just taking time)
 		const interval = setInterval(fetchData, 10000);
 
 		return () => clearInterval(interval);
@@ -393,6 +425,13 @@
 			<button class="app-button" on:click={bid}>Bid</button>
 			<input type="number" min="1" /> FOOBAR
 		</div>
+	</div>
+
+	<div>
+		<strong>Auction Leaderboard</strong>
+		<p>{bid1}</p>
+		<p>{bid2}</p>
+		<p>{bid3}</p>
 	</div>
 
 	<div>
