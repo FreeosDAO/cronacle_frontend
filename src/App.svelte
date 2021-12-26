@@ -6,6 +6,24 @@
 
 	// endpoints
 	const rpc = new JsonRpc("https://proton.greymass.com", { fetch })
+
+	// timing system data
+	const AUCTION_LENGTH_SECONDS = 600;            // 10 minutes
+	const AUCTION_BIDDING_PERIOD_SECONDS = 540;    // 9 minutes
+	let init_secs_utc = 0;
+	let now_secs_utc = 0;
+	let auction_period = 0;
+
+	// auction data
+	let top_bid = 0;
+	let bid_increment = 1;
+	let bid1 = ""
+	let bid2 = ""
+	let bid3 = ""
+
+	// user data
+	let registered = false;
+	let registered_indicator = "";
 	
 	// from Auth
 	import { AuthClient } from "@dfinity/auth-client"
@@ -17,8 +35,6 @@
 	let signedIn = false
 	let client
 	let principal = ""
-	let registered = false;
-	let registered_indicator = "";
 	let credit = "";
 
 	const initAuth = async () => {
@@ -203,12 +219,49 @@
 		}
 	}
 
+	function is_bid_time() {
+		let auction_elapsed_secs = (now_secs_utc - init_secs_utc) % AUCTION_LENGTH_SECONDS;
+		let can_bid = auction_elapsed_secs <= AUCTION_BIDDING_PERIOD_SECONDS ? true : false;
+
+		console.log("can bid = " + can_bid);
+
+		return can_bid;
+	}
+
 
 	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
 	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
 	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
 
-	async function getNFTData() {
+	async function getSystemInitTime() {
+		// get the system record
+        let system_params = {
+                    json: true,
+                    code: 'cronacle', // account containing smart contract
+                    scope: 'cronacle', // the subset of the table to query
+                    table: 'system', // the name of the table
+                    limit: 1 // limit on number of rows returned
+            }
+
+        let system_result = await rpc.get_table_rows(system_params);
+
+        let system_init_date = Date.parse(system_result.rows[0].init);
+
+        init_secs_utc = Math.floor(system_init_date / 1000);
+		console.log("system init utc seconds = " + init_secs_utc);
+	}
+
+	async function getAuctionTimes() {
+		const now = new Date()
+    	now_secs_utc = Math.floor(now / 1000)
+
+		auction_period = Math.floor((now_secs_utc - init_secs_utc) / AUCTION_LENGTH_SECONDS) + 1;
+
+        console.log("now_secs_utc = " + now_secs_utc + ", auction_period = " + auction_period);
+
+	}
+
+	async function getNFTs() {
 		const response = await fetch('https://proton.api.atomicassets.io/atomicassets/v1/assets?owner=cronacle&page=1&limit=100&order=desc&sort=asset_id')
 		const nftdata = await response.json()
 
@@ -246,11 +299,8 @@
 		
 	}
 
-	let bid1 = ""
-	let bid2 = ""
-	let bid3 = ""
 
-	async function getBidsData() {
+	async function getBids() {
 		if (session) {
 			console.log('fetching top 3 bids');
 
@@ -268,20 +318,44 @@
 			let bids_result = await rpc.get_table_rows(bids_params);
 			console.log(bids_result.rows.length + " bid records returned");
 
+			/*
 			bids_result.rows.forEach(bid => {
 				console.log(bid.bidder + " : " + bid.bidamount)
 			})
+			*/
 
-			bid1 = bids_result.rows[0].bidder + " : " + bids_result.rows[0].bidamount
-			bid2 = bids_result.rows[1].bidder + " : " + bids_result.rows[1].bidamount
-			bid3 = bids_result.rows[2].bidder + " : " + bids_result.rows[2].bidamount
+			if (bids_result.rows.length > 0) {
+				bid1 = bids_result.rows[0].bidder + " : " + bids_result.rows[0].bidamount
+			} else {
+				bid1 = ""
+			}
+			
+			if (bids_result.rows.length > 1) {
+				bid2 = bids_result.rows[1].bidder + " : " + bids_result.rows[1].bidamount
+			} else {
+				bid2 = ""
+			}
+			
+			if (bids_result.rows.length > 2) {
+				bid3 = bids_result.rows[2].bidder + " : " + bids_result.rows[2].bidamount
+			} else {
+				bid3 = ""
+			}
+
+			// extract top bid amount (integer)
+			if (bids_result.rows.length > 0) {
+				let top_bid_foobar = bids_result.rows[0].bidamount
+				//let top_bid_str = top_bid_foobar.substring(0, top_bid_foobar.indexOf('.'));
+				top_bid = parseInt(top_bid_foobar)
+				console.log("top_bid_str = " + top_bid)
+			}
+
+			
 		}
 	}
 
-	// fetch and parse data tables
-	async function fetchData() {
-
-		// if (typeof session !== "undefined") {
+	// get user data
+	async function getUser() {
 		if (session) {
 			console.log('fetching user data for ' + session.auth.actor);
 
@@ -301,11 +375,12 @@
 			// Number of elements returned: result.rows.length;
 			// A particular value from the first element: result.rows[0].dfinity_principal
 
-			let registered = registration_result.rows.length == 0 ? false : true;
-			let registered_indicator = registered == true ? "(registered)" : "";
+			registered = registration_result.rows.length == 0 ? false : true;
+			registered_indicator = registered == true ? "(registered)" : "";
 			console.log("registered_indicator = " + registered_indicator)
 
-			// the user's credit balance
+
+			// get the user's credit balance
 			let credit_params = {
 					json: true,
 					code: 'cronacle', // account containing smart contract
@@ -324,13 +399,24 @@
 				credit = "";
 			}
 		}
+	}
 
-		getNFTData();
-		getBidsData();
-		
+	// fetch and parse data tables
+	async function fetchData() {
 
-		// Iterate over the registration records
-		// registration_result.rows.forEach(element => console.log(element.proton_account + " " + element.dfinity_principal));
+		// enable or disable button based on the time
+		let btnBid = document.getElementById("btnBid").disabled = !is_bid_time();
+
+		getUser();
+		getNFTs();
+		getBids();
+		//getAuctions();
+		getAuctionTimes();
+
+		// update the bid amount input control
+		let inputBidAmount = document.getElementById("bidAmount");
+		inputBidAmount.min = top_bid + bid_increment;
+				
 	}
 
 	async function reguser() {
@@ -362,17 +448,18 @@
 		// console.log(result);
 	}
 
-	let bidamount = "1.000000 FOOBAR";
-
 	async function bid() {
 
-		
+		console.log("bidding in auction " + auction_period);
 	}
 
 
 	onMount(() => {
 		
 		reconnect();
+
+		// get the system initialisation time in seconds
+		getSystemInitTime();
 
 		fetchData();	// i'd like to fetch data as soon as the page loads, but this doesn't seem to work (maybe it is, but just taking time)
 		const interval = setInterval(fetchData, 10000);
@@ -422,8 +509,8 @@
 				height="auto" />
 			<p id="nft1_name"></p>
 			<p id="nft1_desc"></p>
-			<button class="app-button" on:click={bid}>Bid</button>
-			<input type="number" min="1" /> FOOBAR
+			<button id="btnBid" class="app-button" on:click={bid}>Bid</button>
+			<input id="bidAmount" type="number" min="1" /> FOOBAR
 		</div>
 	</div>
 
