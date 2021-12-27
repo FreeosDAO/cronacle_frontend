@@ -266,13 +266,13 @@
 	async function getNFTs() {
 
 		// Method 1 - using the REST API
-		const response_all_nfts = await fetch('https://proton.api.atomicassets.io/atomicassets/v1/assets?owner=cronacle&page=1&limit=100&order=desc&sort=asset_id')
-		const nftdata = await response_all_nfts.json()
+		//const response_all_nfts = await fetch('https://proton.api.atomicassets.io/atomicassets/v1/assets?owner=cronacle&page=1&limit=100&order=desc&sort=asset_id')
+		//const nftdata = await response_all_nfts.json()
 
-		nftdata.data.forEach(nft => {
+		//nftdata.data.forEach(nft => {
 			// Log each nft's title
 			//console.log(">>>>>>>>>>>>>")
-			console.log("REST API: asset id: " + nft.asset_id)
+			//console.log("REST API: asset id: " + nft.asset_id)
 			//console.log("image: " + nft.template.immutable_data.image)
 			//console.log("collection: " + nft.collection.name)
 			//console.log("template_mint: " + nft.template_mint)
@@ -280,7 +280,7 @@
 			//console.log("series: " + nft.template.immutable_data.series)
 			//console.log("name: " + nft.template.immutable_data.name)
 			//console.log("description: " + nft.template.immutable_data.desc)
-		})
+		//})
 
 		// Method 2 - using the NFTs table
 		let nfts_params = {
