@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from "svelte";
 	import { ConnectWallet } from "@proton/web-sdk";
+	import { Asset } from '@greymass/eosio';
 	import SvelteTable from "svelte-table";
 	const { JsonRpc } = require('eosjs');
 
@@ -15,6 +16,8 @@
 	let auction_period = 0;
 
 	// auction data
+	let nftid1;
+	let nftid2;
 	let top_bid = 0;
 	let bid_increment = 1;
 	let bid1 = ""
@@ -258,17 +261,18 @@
 		auction_period = Math.floor((now_secs_utc - init_secs_utc) / AUCTION_LENGTH_SECONDS) + 1;
 
         console.log("now_secs_utc = " + now_secs_utc + ", auction_period = " + auction_period);
-
 	}
 
 	async function getNFTs() {
-		const response = await fetch('https://proton.api.atomicassets.io/atomicassets/v1/assets?owner=cronacle&page=1&limit=100&order=desc&sort=asset_id')
-		const nftdata = await response.json()
 
-		//nftdata.data.forEach(nft => {
+		// Method 1 - using the REST API
+		const response_all_nfts = await fetch('https://proton.api.atomicassets.io/atomicassets/v1/assets?owner=cronacle&page=1&limit=100&order=desc&sort=asset_id')
+		const nftdata = await response_all_nfts.json()
+
+		nftdata.data.forEach(nft => {
 			// Log each nft's title
 			//console.log(">>>>>>>>>>>>>")
-			//console.log("asset id: " + nft.asset_id)
+			console.log("REST API: asset id: " + nft.asset_id)
 			//console.log("image: " + nft.template.immutable_data.image)
 			//console.log("collection: " + nft.collection.name)
 			//console.log("template_mint: " + nft.template_mint)
@@ -276,27 +280,56 @@
 			//console.log("series: " + nft.template.immutable_data.series)
 			//console.log("name: " + nft.template.immutable_data.name)
 			//console.log("description: " + nft.template.immutable_data.desc)
-		//})
+		})
 
-		// display nft info
-		// nft 1
+		// Method 2 - using the NFTs table
+		let nfts_params = {
+				json: true,
+				code: 'cronacle', // account containing smart contract
+				scope: 'cronacle', // the subset of the table to query
+				table: 'nfts', // the name of the table
+				reverse: false,
+				limit: 4 // limit on number of rows returned
+			};
+
+		let nfts_result = await rpc.get_table_rows(nfts_params);
+		console.log(nfts_result.rows.length + " nft records returned");
+
+		nfts_result.rows.forEach(nft => {
+			console.log("Proton table: asset id: " + nft.nftid)
+		})
+
+		// display nft 1 info
 		const nft1image = document.getElementById("nft1_image");
 		const nft1name = document.getElementById("nft1_name")
 		const nft1desc = document.getElementById("nft1_desc")
 
-		nft1image.src = "https://ipfs.io/ipfs/" + nftdata.data[0].template.immutable_data.image
-		nft1name.textContent = "NFT " + nftdata.data[0].asset_id + ": " + nftdata.data[0].template.immutable_data.name + " (" + nftdata.data[0].template_mint + "/" + nftdata.data[0].template.issued_supply + ")"
-		nft1desc.textContent = nftdata.data[0].template.immutable_data.desc
+		// get the REST API data for nft1
+		let rest_url1 = 'https://proton.api.atomicassets.io/atomicassets/v1/assets/' + nfts_result.rows[0].nftid
+		const response1 = await fetch(rest_url1)
+		const nftdata1 = await response1.json()
 
-		// nft 2
+		nft1image.src = "https://ipfs.io/ipfs/" + nftdata1.data.template.immutable_data.image
+		nft1name.textContent = "NFT " + nftdata1.data.asset_id + ": " + nftdata1.data.template.immutable_data.name + " (" + nftdata1.data.template_mint + "/" + nftdata1.data.template.issued_supply + ")"
+		nft1desc.textContent = nftdata1.data.template.immutable_data.desc
+
+		nftid1 = nftdata1.data.asset_id;
+
+		// display nft 2 info
 		const nft2image = document.getElementById("nft2_image");
 		const nft2name = document.getElementById("nft2_name")
 		const nft2desc = document.getElementById("nft2_desc")
 
-		nft2image.src = "https://ipfs.io/ipfs/" + nftdata.data[1].template.immutable_data.image
-		nft2name.textContent = "NFT " + nftdata.data[1].asset_id + ": " + nftdata.data[1].template.immutable_data.name + " (" + nftdata.data[1].template_mint + "/" + nftdata.data[1].template.issued_supply + ")"
-		nft2desc.textContent = nftdata.data[1].template.immutable_data.desc
-		
+		// get the REST API data for nft2
+		let rest_url2 = 'https://proton.api.atomicassets.io/atomicassets/v1/assets/' + nfts_result.rows[1].nftid
+		const response2 = await fetch(rest_url2)
+		const nftdata2 = await response2.json()
+
+		nft2image.src = "https://ipfs.io/ipfs/" + nftdata2.data.template.immutable_data.image
+		nft2name.textContent = "NFT " + nftdata2.data.asset_id + ": " + nftdata2.data.template.immutable_data.name + " (" + nftdata2.data.template_mint + "/" + nftdata2.data.template.issued_supply + ")"
+		nft2desc.textContent = nftdata2.data.template.immutable_data.desc
+
+		nftid2 = nftdata2.data.asset_id;
 	}
 
 
@@ -345,9 +378,11 @@
 			// extract top bid amount (integer)
 			if (bids_result.rows.length > 0) {
 				let top_bid_foobar = bids_result.rows[0].bidamount
-				//let top_bid_str = top_bid_foobar.substring(0, top_bid_foobar.indexOf('.'));
 				top_bid = parseInt(top_bid_foobar)
 				console.log("top_bid_str = " + top_bid)
+			} else {
+				// there are no bids so top_bid = 0
+				top_bid = 0;
 			}
 
 			
@@ -415,9 +450,10 @@
 
 		// update the bid amount input control
 		let inputBidAmount = document.getElementById("bidAmount");
-		inputBidAmount.min = top_bid + bid_increment;
-				
+		inputBidAmount.min = inputBidAmount.placeholder = top_bid + bid_increment;
+
 	}
+
 
 	async function reguser() {
 		console.log("registering " + session.auth.actor);
@@ -450,7 +486,40 @@
 
 	async function bid() {
 
-		console.log("bidding in auction " + auction_period);
+		// read the bidAmount input control and convert it to a FOOBAR asset
+		let amount = parseInt(document.getElementById("bidAmount").value);
+		let bid_amount_foobar = amount + ".000000 FOOBAR";
+
+		console.log("Bidding " + bid_amount_foobar + " for nft " + nftid1 + " in auction " + auction_period);
+
+		const bid_amount_asset = Asset.from(bid_amount_foobar);
+		console.log("bid_amount_asset : " + bid_amount_asset)
+
+		try {
+			const result = await session.transact({
+				transaction: {
+					actions: [
+						{
+							// Contract
+							account: "cronacle",
+							// Action name
+							name: "bid",
+							// Action parameters
+							data: {
+								user: session.auth.actor,
+								nft_id: nftid1,
+								bidamount: bid_amount_foobar
+							},
+							authorization: [session.auth],
+						},
+					],
+				},
+				broadcast: true,
+			});
+		} catch (e) {
+			console.log(e);
+		}
+		
 	}
 
 
@@ -487,14 +556,14 @@
 		<h1>{session.auth.actor} {registered_indicator}</h1>
 		<h2>Credit: {credit}</h2>
 		{#if session && !registered}
-		<button class="app-button" on:click={reguser}>Proton Register</button>
+		<button class="app-button" on:click={reguser}>Register</button>
 		{/if}
 		<button class="app-button" on:click={storebtc}>Store BTC price</button>
 		<button class="app-button" on:click={proton_storeid}>Proton Store ID</button>
 		<button class="app-button" on:click={ic_storeid}>IC Store ID</button>
 		<button class="app-button" on:click={logout}>Proton Logout</button>
 	{:else}
-		<button class="app-button" on:click={login}>Proton Sign In</button>
+		<button class="app-button" on:click={login}>Log In</button>
 	{/if}
 
 	<div>
