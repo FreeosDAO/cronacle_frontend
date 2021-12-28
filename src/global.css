@@ -12,6 +12,37 @@ body {
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }
 
+h1 {
+	padding: 1em 0 0.5em;
+	text-transform: none;
+	font-size: 3.2em;
+	font-weight: 100;
+	
+}
+
+h1, h2, h3, h4 {
+	color: var(--color-text);
+}
+
+h2 {
+	padding: 0.3em;
+	margin: 0 0;
+	font-size: 2.8em;
+	font-weight: 50;
+}
+
+h3 {
+	padding: 0.8em;
+	margin: 0 0;
+	font-size: 1.5em;
+	font-weight: 50;
+}
+h4 {
+	padding: 0.5em;
+	font-size: 1em;
+	font-weight: 30;
+}
+
 a {
 	color: rgb(0,100,200);
 	text-decoration: none;
@@ -34,7 +65,7 @@ input, button, select, textarea {
 	font-size: inherit;
 	-webkit-padding: 0.4em 0;
 	padding: 0.4em;
-	margin: 0 0 0.5em 0;
+	margin: 0.4em 0 0.4em 0;
 	box-sizing: border-box;
 	border: 1px solid #ccc;
 	border-radius: 2px;
@@ -45,20 +76,105 @@ input:disabled {
 }
 
 button {
-	color: #333;
-	background-color: #f4f4f4;
-	outline: none;
+	background-color: var(--color-primary);
+	border-radius: 0.75rem;
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	padding: 0.75rem 3rem;
+	--tw-text-opacity: 1;
+	color: rgba(255,255,255,var(--tw-text-opacity));
+	--tw-translate-x: 0;
+	--tw-translate-y: 0;
+	--tw-rotate: 0;
+	--tw-skew-x: 0;
+	--tw-skew-y: 0;
+	--tw-scale-x: 1;
+	--tw-scale-y: 1;
+	transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;
+	transition-timing-function: cubic-bezier(.4,0,.2,1);
+	transition-duration: .15s;
+}
+
+.btn-primary {
+	background-color: var(--color-primary);
+	border-radius: 0.75rem;
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	padding: 0.75rem 3rem;
+	--tw-text-opacity: 1;
+	color: rgba(255,255,255,var(--tw-text-opacity));
+	--tw-translate-x: 0;
+	--tw-translate-y: 0;
+	--tw-rotate: 0;
+	--tw-skew-x: 0;
+	--tw-skew-y: 0;
+	--tw-scale-x: 1;
+	--tw-scale-y: 1;
+	transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;
+	transition-timing-function: cubic-bezier(.4,0,.2,1);
+	transition-duration: .15s;
 }
 
 button:disabled {
-	color: #999;
+	color: var(--color-disabled-text);
+	background-color: var(--color-disabled);
 }
 
 button:not(:disabled):active {
-	background-color: #ddd;
+	background-color: var(--color-tertiary);
 }
 
 button:focus {
-	border-color: #666;
+	border-color: #222;
+	border-style: double;
+}
+
+.p-8 {
+    padding: 2rem;
+}
+.mx-auto {
+    margin-left: auto;
+    margin-right: auto;
+}
+.justify-center {
+    justify-content: center;
+}
+.flex-col {
+    flex-direction: column;
+}
+.inline-flex {
+    display: inline-flex;
+}
+.text-4xl {
+	font-family: futura-pt,sans-serif;
+	font-style: normal;
+	font-weight: 600;
+}
+.bg-secondary {
+    background-color: #39c2ff;
+    background-color: var(--color-secondary);
+}
+
+.text-white {
+    --tw-text-opacity: 1;
+    color: rgba(255,255,255,var(--tw-text-opacity));
+}
+
+:root {
+	--color-primary: #00a1ed;
+	--color-secondary: #39c2ff;
+	--color-tertiary: #d5f2ff;
+	--color-text: #414141;
+	--color-disabled: rgba(243,243,243,var(--tw-bg-opacity));
+	--color-disabled-text: #414141;
+	-moz-tab-size: 4;
+	-o-tab-size: 4;
+	tab-size: 4;
 }
 
