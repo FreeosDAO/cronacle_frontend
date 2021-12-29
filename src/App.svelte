@@ -1,9 +1,10 @@
 <script>
 	import { onMount } from "svelte";
 	import { ConnectWallet } from "@proton/web-sdk";
+	import { Transfer } from "@proton/web-sdk";
 	import { Asset } from '@greymass/eosio';
 	import SvelteTable from "svelte-table";
-	const { JsonRpc } = require('eosjs');
+	const { JsonRpc, Api } = require('eosjs');
 
 	// endpoints
 	const rpc = new JsonRpc("https://proton.greymass.com", { fetch })
@@ -78,6 +79,34 @@
 	}
 
 	onMount(initAuth)	// TODO - merge onMount code
+
+	async function transfer() {
+		// Send Transaction
+		let amount = parseInt(document.getElementById("transferAmount").value);
+		console.log("Amount:"+amount);
+		const result = await session.transact({
+			transaction: {
+				actions: [
+					{
+						// Token contract for FOOBAR
+						account: "xtokens",
+						// Action name
+						name: "transfer",
+						// Action parameters
+						data: {
+							from: session.auth.actor,
+							to: "cronacle",
+							quantity: amount+".000000 FOOBAR",
+							memo: "Auction credit",
+						},
+						authorization: [session.auth],
+					},
+				],
+			},
+			broadcast: true,
+		});
+		console.log("Transaction ID", result.processed.id);
+	}
 	// end of from Auth
 
 	// Constants
@@ -331,7 +360,6 @@
 
 		nft2image.src = "https://ipfs.io/ipfs/" + nftdata2.data.template.immutable_data.image
 		nft2name.textContent = "NFT " + nftdata2.data.asset_id + ": " + nftdata2.data.template.immutable_data.name + " (" + nftdata2.data.template_mint + "/" + nftdata2.data.template.issued_supply + ")"
-		nft2desc.textContent = nftdata2.data.template.immutable_data.desc
 
 		nftid2 = nftdata2.data.asset_id;
 	}
@@ -435,26 +463,33 @@
 			if (credit_result.rows.length > 0) {
 				credit = credit_result.rows[0].amount;
 			} else {
-				credit = "";
+				credit = "0";
 			}
+			document.getElementById("credit").textContent = credit;
 		}
 	}
 
+	let lastFetchDataTime = 0;
 	// fetch and parse data tables
 	async function fetchData() {
+		console.log("current time " + (now_secs_utc - lastFetchDataTime));
+		if(now_secs_utc - lastFetchDataTime > 10)
+		{
 
-		// enable or disable button based on the time
-		let btnBid = document.getElementById("btnBid").disabled = !is_bid_time() || !canBid();
+			lastFetchDataTime = now_secs_utc
+			// enable or disable button based on the time
+			let btnBid = document.getElementById("btnBid").disabled = !is_bid_time() || !canBid();
 
-		getUser();
-		getNFTs();
-		getBids();
-		//getAuctions();
-		getAuctionTimes();
+			getUser();
+			getNFTs();
+			getBids();
+			//getAuctions();
+			getAuctionTimes();
 
-		// update the bid amount input control
-		let inputBidAmount = document.getElementById("bidAmount");
-		inputBidAmount.min = inputBidAmount.placeholder = top_bid + bid_increment;
+			// update the bid amount input control
+			let inputBidAmount = document.getElementById("bidAmount");
+			inputBidAmount.min = inputBidAmount.placeholder = top_bid + bid_increment;
+		}
 
 	}
 
@@ -535,14 +570,22 @@
 		getSystemInitTime();
 
 		fetchData();	// i'd like to fetch data as soon as the page loads, but this doesn't seem to work (maybe it is, but just taking time)
-		const interval = setInterval(fetchData, 10000);
+		const interval = setInterval(update, 100);
 
 		return () => clearInterval(interval);
 	});
 
 	function canBid()
 	{
-		return signedIn && session != null && registered;
+		return session != null && registered;
+	}
+
+	
+	function update()
+	{
+		const now = new Date()
+		now_secs_utc = Math.floor(now / 1000);
+		fetchData();
 	}
 </script>
 
@@ -567,9 +610,6 @@
 		{#if session && !registered}
 		<button class="app-button" on:click={reguser}>Register</button>
 		{/if}
-		<button class="app-button" on:click={storebtc}>Store BTC price</button>
-		<button class="app-button" on:click={proton_storeid}>Proton Store ID</button>
-		<button class="app-button" on:click={ic_storeid}>IC Store ID</button>
 		<button class="app-button" on:click={logout}>Proton Logout</button>
 	{:else}
 		<button class="app-button" on:click={login}>Log In</button>
@@ -594,14 +634,16 @@
 			</div>
 			<div id="bid-container">
 				
-				<form class="bid-form" >
+				<div class="bid-form" >
 					<h2>Make Your Bid</h2>
-					<h3>Available Credit: {credit}</h3>
+					<h3 id="credit">Available Credit: {credit}</h3>
+					<input id="transferAmount" type="number" min="1"/>
+					<button class="px-4 py-2 btn-primary" id="btnTransfer" on:click={transfer}>Transfer</button>
 					<input id="bidAmount" type="number" min="1"/>
 					<img src="https://foobar.protonchain.com/images/coin.svg" class="inline-block foobar-icon px-4 py-2" alt="FOOBAR"/>
 					<button class="inline-block px-4 py-2 btn-primary rounded rounded-l-none" id="btnBid" on:click={bid}>Bid</button>
 					<p id="hint" class="hint">You need to be logged in and registered to bid for this auction</p>
-				</form>
+				</div>
 			</div>			
 		</div>
 	</div>
