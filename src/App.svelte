@@ -1,10 +1,14 @@
 <script>
 	import { onMount } from "svelte";
 	import { ConnectWallet } from "@proton/web-sdk";
-	import { Transfer } from "@proton/web-sdk";
 	import { Asset } from '@greymass/eosio';
 	import SvelteTable from "svelte-table";
 	const { JsonRpc, Api } = require('eosjs');
+	// from Auth
+	import { AuthClient } from "@dfinity/auth-client"
+
+	// motoko declarations
+	import { spda } from "./declarations/spda";
 
 	// endpoints
 	const rpc = new JsonRpc("https://proton.greymass.com", { fetch })
@@ -17,29 +21,27 @@
 	let auction_period = 0;
 
 	// auction data
-	let nftid1;
-	let nftid2;
 	let top_bid = 0;
 	let bid_increment = 1;
 	let bid1 = ""
 	let bid2 = ""
 	let bid3 = ""
 
+	let currentAuction;
+	let auctionBids = [];
+	let nfts = [];
+
 	// user data
-	let registered = false;
+	let isUserRegistered = false;
 	let registered_indicator = "";
 	
-	// from Auth
-	import { AuthClient } from "@dfinity/auth-client"
 
-	// motoko declarations
-	import { spda } from "./declarations/spda";
 
 	// from Auth
-	let signedIn = false
+	let signedInInternetIdentity = false
 	let client
 	let principal = ""
-	let credit = "";
+	let totalCredit = "";
 
 	const initAuth = async () => {
 		client = await AuthClient.create()
@@ -49,11 +51,11 @@
 		const identity = client.getIdentity()
 		principal = identity.getPrincipal().toString()
 		console.log("Auth. already authenticated. principal = " + principal)      
-		signedIn = true
+		signedInInternetIdentity = true
 		}
 	}
 
-	const signIn = async () => {
+	const signInInternetIdentity = async () => {
 		const result = await new Promise((resolve, reject) => {
 		client.login({
 			identityProvider: "https://identity.ic0.app",
@@ -67,12 +69,12 @@
 		})
 		principal = result.principal
 		console.log("Auth. signed in. principal = " + principal)
-		signedIn = true
+		signedInInternetIdentity = true
 	}
 
-	const signOut = async () => {
+	const signOutInternetIdentity = async () => {
 		await client.logout()
-		signedIn = false
+		signedInInternetIdentity = false
 		principal = ""
 		principal_id = principal
 		console.log("Auth. signed out. principal id = " + principal)
@@ -80,32 +82,92 @@
 
 	onMount(initAuth)	// TODO - merge onMount code
 
-	async function transfer() {
-		// Send Transaction
-		let amount = parseInt(document.getElementById("transferAmount").value);
-		console.log("Amount:"+amount);
-		const result = await session.transact({
-			transaction: {
-				actions: [
-					{
-						// Token contract for FOOBAR
-						account: "xtokens",
-						// Action name
-						name: "transfer",
-						// Action parameters
-						data: {
-							from: session.auth.actor,
-							to: "cronacle",
-							quantity: amount+".000000 FOOBAR",
-							memo: "Auction credit",
+	async function deposit() {
+
+		try {
+			let amount = parseInt(document.getElementById("depositAmount").value);
+			const result = await session.transact({
+				transaction: {
+					actions: [
+						{
+							account: "xtokens",
+							// Action name
+							name: "transfer",
+							// Action parameters
+							data: {
+								from: session.auth.actor,
+								to: "cronacle",
+								quantity: amount+".000000 FOOBAR",
+								memo: "auction credit"
+							},
+							authorization: [session.auth],
 						},
-						authorization: [session.auth],
-					},
-				],
-			},
-			broadcast: true,
-		});
-		console.log("Transaction ID", result.processed.id);
+					],
+				},
+				broadcast: true,
+			});
+			console.log("Transaction ID", result.processed.id);
+		} catch (error) {
+			displayRequestError(error);
+		}
+		
+		
+	}
+
+	async function withdraw() {
+		try {
+			const result = await session.transact({
+				transaction: {
+					actions: [
+						{
+							account: "cronacle",
+							// Action name
+							name: "withdraw",
+							// Action parameters
+							data: {
+								user: session.auth.actor
+							},
+							authorization: [session.auth],
+						},
+					],
+				},
+				broadcast: true,
+			});
+			console.log("Transaction ID", result.processed.id);
+		} catch (error) {
+			displayRequestError(error);
+		}
+		
+		
+	}
+
+	async function claimNFT() {
+		try {
+			const result = await session.transact({
+				transaction: {
+					actions: [
+						{
+							account: "cronacle",
+							// Action name
+							name: "claim",
+							// Action parameters
+							data: {
+								user: session.auth.actor
+							},
+							authorization: [session.auth],
+						},
+					],
+				},
+				broadcast: true,
+			});
+			console.log("Transaction ID", result.processed.id);
+			auctionBids = null;
+			await getBids();
+		} catch (error) {
+			displayRequestError(error);
+		}
+		
+		
 	}
 	// end of from Auth
 
@@ -114,128 +176,49 @@
 	let link, session;
 
 	async function createLink({ restoreSession }) {
-		const result = await ConnectWallet({
-			linkOptions: {
-				endpoints: ["https://proton.greymass.com"],
-				restoreSession,
-			},
-			transportOptions: {
-				requestAccount: "myprotonacc", // Your proton account
-				requestStatus: true,
-			},
-			selectorOptions: {
-				appName: "Cronacle",
-				appLogo:
-					"https://freeos.io/freeos-appLogo.svg?v=3",
-				customStyleOptions: {
-					modalBackgroundColor: "#F4F7FA",
-					logoBackgroundColor: "white",
-					isLogoRound: true,
-					optionBackgroundColor: "white",
-					optionFontColor: "black",
-					primaryFontColor: "black",
-					secondaryFontColor: "#6B727F",
-					linkColor: "#752EEB",
+		try {
+			const result = await ConnectWallet({
+				linkOptions: {
+					endpoints: ["https://proton.greymass.com"],
+					restoreSession,
 				},
-			},
-		});
-		link = result.link;
-		session = result.session;
+				transportOptions: {
+					requestAccount: "myprotonacc", // Your proton account
+					requestStatus: true,
+				},
+				selectorOptions: {
+					appName: "Cronacle",
+					appLogo:
+						"https://freeos.io/freeos-appLogo.svg?v=3",
+					customStyleOptions: {
+						modalBackgroundColor: "#F4F7FA",
+						logoBackgroundColor: "white",
+						isLogoRound: true,
+						optionBackgroundColor: "white",
+						optionFontColor: "black",
+						primaryFontColor: "black",
+						secondaryFontColor: "#6B727F",
+						linkColor: "#752EEB",
+					},
+				},
+			});
+			link = result.link;
+			session = result.session;
+		} catch (error) {
+			displayRequestError(error);
+		}
+		
 	}
 
 	async function login() {
 		// Create link
-		await createLink({ restoreSession: false });
-		console.log("User authorization:", session.auth); // { actor: 'fred', permission: 'active }
-	}
-
-	async function proton_storeid() {
-
-		//let principal_id = principal;
-		//alert(principal_id)
-		console.log("App. principal = " + principal)
-
-		// store the value
-		// Send Transaction
-		const result = await session.transact({
-			transaction: {
-				actions: [
-					{
-						// Token contract for btc records
-						account: "cronacle",
-						// Action name
-						name: "storeid",
-						// Action parameters
-						data: {
-							user: session.auth.actor,
-							principal: principal
-						},
-						authorization: [session.auth],
-					},
-				],
-			},
-			broadcast: true,
-		});
-		// console.log("Transaction ID", result.processed.id);
-
-	}
-
-	async function ic_storeid() {
-		console.log("In ic_storeid")
-		console.log(principal)
-		console.log(session.auth.actor)
-		const dfinity_result = await spda.storeid(session.auth.actor, principal)
-		console.log(dfinity_result)
-	}
-
-
-	async function storebtc() {
-
-		var request = new XMLHttpRequest() // inserted the CoinGecko stuff from prior
-		let btc_value = "";
-
-		// Open a new connection, using the GET request on the URL endpoint
-		request.open('GET', 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin', true)
-
-		request.onload = function () {
-		// Begin accessing JSON data here
-		var newdata = JSON.parse(this.response)
-		console.log(newdata)
-
-		newdata.forEach((object) => {
-			console.log(object.name)
-			console.log(object.current_price)
-			// `vm.a` is now reactive
-			// document.getElementById('demo').innerHTML = object.current_price + ' is the price of Bitcoin' // this displays the price up in the template.  There might be a more Vue way to do this, but I don't know how.
-			btc_value = object.current_price;
-		})
-
-		// store the value
-		// Send Transaction
-		const result = session.transact({
-			transaction: {
-				actions: [
-					{
-						// Token contract for btc records
-						account: "cronacle",
-						// Action name
-						name: "storebtc",
-						// Action parameters
-						data: {
-							btcprice: btc_value
-						},
-						authorization: [session.auth],
-					},
-				],
-			},
-			broadcast: true,
-		});
-		// console.log("Transaction ID", result.processed.id);
+		try {
+			await createLink({ restoreSession: false });
+		} catch (error) {
+			displayRequestError(error);
 		}
-
-		// Send request
-		request.send()
-
+		
+		console.log("User authorization:", session.auth); // { actor: 'fred', permission: 'active }
 	}
 
 	async function logout() {
@@ -247,23 +230,40 @@
 		try {
 			await createLink({ restoreSession: true });
 		} catch (e) {
-			console.warn(e);
+			displayRequestError(e);
 		}
 	}
 
-	function is_bid_time() {
+	function isBidTime() {
 		let auction_elapsed_secs = (now_secs_utc - init_secs_utc) % AUCTION_LENGTH_SECONDS;
 		let can_bid = auction_elapsed_secs <= AUCTION_BIDDING_PERIOD_SECONDS ? true : false;
-
-		console.log("can bid = " + can_bid);
 
 		return can_bid;
 	}
 
+	function getRemainingAuctionTimeS()
+	{
+		let auction_elapsed_secs = (now_secs_utc - init_secs_utc) % AUCTION_LENGTH_SECONDS;
+		let remainingSeconds = AUCTION_BIDDING_PERIOD_SECONDS - auction_elapsed_secs;
+		return new Date(remainingSeconds * 1000).toISOString().substring(11, 19);
+	}
 
-	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
-	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
-	// FETCH DATA    FETCH DATA    FETCH DATA    FETCH DATA
+	function getAvailableCredit()
+	{
+		let credit = parseInt(totalCredit);
+		
+		for(let i = 0; i < auctionBids.length; i ++)
+		{
+			let bid = auctionBids[i];
+			if(bid.bidder == session.auth.actor)
+			{
+				let bidAmount = parseInt(bid.bidamount);
+				credit -= bidAmount;
+			}
+		}
+		return credit ? credit + ".000000 FOOBAR" : "0.000000 FOOBAR" ;
+	}
+
 
 	async function getSystemInitTime() {
 		// get the system record
@@ -288,86 +288,42 @@
     	now_secs_utc = Math.floor(now / 1000)
 
 		auction_period = Math.floor((now_secs_utc - init_secs_utc) / AUCTION_LENGTH_SECONDS) + 1;
-
-        console.log("now_secs_utc = " + now_secs_utc + ", auction_period = " + auction_period);
 	}
 
 	async function getNFTs() {
 
-		// Method 1 - using the REST API
-		//const response_all_nfts = await fetch('https://proton.api.atomicassets.io/atomicassets/v1/assets?owner=cronacle&page=1&limit=100&order=desc&sort=asset_id')
-		//const nftdata = await response_all_nfts.json()
 
-		//nftdata.data.forEach(nft => {
-			// Log each nft's title
-			//console.log(">>>>>>>>>>>>>")
-			//console.log("REST API: asset id: " + nft.asset_id)
-			//console.log("image: " + nft.template.immutable_data.image)
-			//console.log("collection: " + nft.collection.name)
-			//console.log("template_mint: " + nft.template_mint)
-			//console.log("template issued supply: " + nft.template.issued_supply)
-			//console.log("series: " + nft.template.immutable_data.series)
-			//console.log("name: " + nft.template.immutable_data.name)
-			//console.log("description: " + nft.template.immutable_data.desc)
-		//})
-
-		// Method 2 - using the NFTs table
 		let nfts_params = {
 				json: true,
 				code: 'cronacle', // account containing smart contract
 				scope: 'cronacle', // the subset of the table to query
 				table: 'nfts', // the name of the table
 				reverse: false,
-				limit: 4 // limit on number of rows returned
+				limit: 3 // limit on number of rows returned
 			};
 
 		let nfts_result = await rpc.get_table_rows(nfts_params);
-		console.log(nfts_result.rows.length + " nft records returned");
 
-		nfts_result.rows.forEach(nft => {
-			console.log("Proton table: asset id: " + nft.nftid)
-		})
 
-		// display nft 1 info
-		const nft1image = document.getElementById("nft1_image");
-		const nft1Collection = document.getElementById("nft1_collection");
-		const nft1name = document.getElementById("nft1_name");
-		const nft1Id = document.getElementById("nft1_id");
-		const nft1desc = document.getElementById("nft1_desc");
-
-		// get the REST API data for nft1
-		let rest_url1 = 'https://proton.api.atomicassets.io/atomicassets/v1/assets/' + nfts_result.rows[0].nftid
-		const response1 = await fetch(rest_url1)
-		const nftdata1 = await response1.json()
-
-		nft1image.src = "https://ipfs.io/ipfs/" + nftdata1.data.template.immutable_data.image;
-		nft1Id.textContent = "NFT " + nftdata1.data.asset_id;
-		nft1Collection.textContent = nftdata1.data.collection.name;
-		nft1name.textContent = nftdata1.data.template.immutable_data.name +" (" + nftdata1.data.template_mint + "/" + nftdata1.data.template.issued_supply + ")";
-		nft1desc.textContent = nftdata1.data.template.immutable_data.desc;
-		
-		nftid1 = nftdata1.data.asset_id;
-
-		// display nft 2 info
-		const nft2image = document.getElementById("nft2_image");
-		const nft2name = document.getElementById("nft2_name")
-		const nft2desc = document.getElementById("nft2_desc")
-
-		// get the REST API data for nft2
-		let rest_url2 = 'https://proton.api.atomicassets.io/atomicassets/v1/assets/' + nfts_result.rows[1].nftid
-		const response2 = await fetch(rest_url2)
-		const nftdata2 = await response2.json()
-
-		nft2image.src = "https://ipfs.io/ipfs/" + nftdata2.data.template.immutable_data.image
-		nft2name.textContent = "NFT " + nftdata2.data.asset_id + ": " + nftdata2.data.template.immutable_data.name + " (" + nftdata2.data.template_mint + "/" + nftdata2.data.template.issued_supply + ")"
-
-		nftid2 = nftdata2.data.asset_id;
+		for(let index = 0; index < nfts_result.rows.length; ++index)
+		{	
+			let element = nfts_result.rows[index];
+			let rest_url = 'https://proton.api.atomicassets.io/atomicassets/v1/assets/' + element.nftid;
+			try {
+				const response = await fetch(rest_url);
+				const nftdata = await response.json();	
+				nfts[index] = nftdata;
+				
+			} catch (error) {
+				displayRequestError(e);
+			}
+		}
 	}
 
 
 	async function getBids() {
 		if (session) {
-			console.log('fetching top 3 bids');
+			console.log('fetching all bids');
 
 			let bids_params = {
 				json: true,
@@ -376,39 +332,15 @@
 				table: 'bids', // the name of the table
 				index_position: 2,	// secondary index
 				key_type: 'i64',
-				reverse: true,
-				limit: 3 // limit on number of rows returned
+				reverse: true
 			};
 
 			let bids_result = await rpc.get_table_rows(bids_params);
-			console.log(bids_result.rows.length + " bid records returned");
 
-			/*
-			bids_result.rows.forEach(bid => {
-				console.log(bid.bidder + " : " + bid.bidamount)
-			})
-			*/
-
-			if (bids_result.rows.length > 0) {
-				bid1 = bids_result.rows[0].bidder + " : " + bids_result.rows[0].bidamount
-			} else {
-				bid1 = ""
-			}
-			
-			if (bids_result.rows.length > 1) {
-				bid2 = bids_result.rows[1].bidder + " : " + bids_result.rows[1].bidamount
-			} else {
-				bid2 = ""
-			}
-			
-			if (bids_result.rows.length > 2) {
-				bid3 = bids_result.rows[2].bidder + " : " + bids_result.rows[2].bidamount
-			} else {
-				bid3 = ""
-			}
+			auctionBids = bids_result.rows;
 
 			// extract top bid amount (integer)
-			if (bids_result.rows.length > 0) {
+			if (bids_result.rows.length > 0 && bids_result.rows[0].nftid == auctionNFTId) {
 				let top_bid_foobar = bids_result.rows[0].bidamount
 				top_bid = parseInt(top_bid_foobar)
 				console.log("top_bid_str = " + top_bid)
@@ -417,7 +349,38 @@
 				top_bid = 0;
 			}
 
+			// update the bid amount input control
+			let inputBidAmount = document.getElementById("bidAmount");
+			let minBidAmount = top_bid + bid_increment;
+			if(inputBidAmount.min != minBidAmount)
+			{
+				inputBidAmount.min = inputBidAmount.value = minBidAmount;
+			}
 			
+		}
+	}
+
+	async function getAuctions()
+	{
+		if(session)
+		{
+
+			let parameters = {
+					json: true,
+					code: 'cronacle', // account containing smart contract
+					scope: 'cronacle', // the subset of the table to query
+					table: 'auctions', // the name of the table
+					reverse: true,
+					limit: 1 
+			};
+
+			let result = await rpc.get_table_rows(parameters);
+
+			if(result.rows.length > 0)
+			{
+				currentAuction = result.rows[0];
+				auctionNFTId = currentAuction.nftid;
+			}
 		}
 	}
 
@@ -437,13 +400,9 @@
 			};
 
 			let registration_result = await rpc.get_table_rows(registration_params);
-			console.log(registration_result.rows.length + " user records returned")
 
-			// Number of elements returned: result.rows.length;
-			// A particular value from the first element: result.rows[0].dfinity_principal
-
-			registered = registration_result.rows.length == 0 ? false : true;
-			registered_indicator = registered == true ? "(registered)" : "";
+			isUserRegistered = registration_result.rows.length == 0 ? false : true;
+			registered_indicator = isUserRegistered == true ? "(registered)" : "";
 			console.log("registered_indicator = " + registered_indicator)
 
 
@@ -458,105 +417,96 @@
 			}
 
 			let credit_result = await rpc.get_table_rows(credit_params);
-
-			//console.log("credit start")
 			if (credit_result.rows.length > 0) {
-				credit = credit_result.rows[0].amount;
+				totalCredit = credit_result.rows[0].amount;
 			} else {
-				credit = "0";
+				totalCredit = "0";
 			}
-			document.getElementById("credit").textContent = credit;
+			
 		}
 	}
 
-	let lastFetchDataTime = 0;
+
 	// fetch and parse data tables
 	async function fetchData() {
-		console.log("current time " + (now_secs_utc - lastFetchDataTime));
-		if(now_secs_utc - lastFetchDataTime > 10)
-		{
-
-			lastFetchDataTime = now_secs_utc
-			// enable or disable button based on the time
-			let btnBid = document.getElementById("btnBid").disabled = !is_bid_time() || !canBid();
-
-			getUser();
-			getNFTs();
-			getBids();
-			//getAuctions();
-			getAuctionTimes();
-
-			// update the bid amount input control
-			let inputBidAmount = document.getElementById("bidAmount");
-			inputBidAmount.min = inputBidAmount.placeholder = top_bid + bid_increment;
-		}
-
+		await getNFTs();
+		await getUser();
+		await getAuctions();
+		await getBids();
 	}
 
 
 	async function reguser() {
-		console.log("registering " + session.auth.actor);
-
-		try {
-			const result = await session.transact({
-				transaction: {
-					actions: [
-						{
-							// Contract
-							account: "cronacle",
-							// Action name
-							name: "reguser",
-							// Action parameters
-							data: {
-								user: session.auth.actor
+		if(session)
+		{
+			try {
+				const result = await session.transact({
+					transaction: {
+						actions: [
+							{
+								// Contract
+								account: "cronacle",
+								// Action name
+								name: "reguser",
+								// Action parameters
+								data: {
+									user: session.auth.actor
+								},
+								authorization: [session.auth],
 							},
-							authorization: [session.auth],
-						},
-					],
-				},
-				broadcast: true,
-			});
-		} catch (e) {
-			console.log(e);
+						],
+					},
+					broadcast: true,
+				});
+			} catch (e) {
+				displayRequestError(e);
+			}
 		}
 
-		// console.log(result);
 	}
 
 	async function bid() {
+		if(session)
+		{
+			currentAuction = null;
+			// read the bidAmount input control and convert it to a FOOBAR asset
+			let amount = parseInt(document.getElementById("bidAmount").value);
+			let bid_amount_foobar = amount + ".000000 FOOBAR";
 
-		// read the bidAmount input control and convert it to a FOOBAR asset
-		let amount = parseInt(document.getElementById("bidAmount").value);
-		let bid_amount_foobar = amount + ".000000 FOOBAR";
+			console.log("Bidding " + bid_amount_foobar + " for nft " + auctionNFTId + " in auction " + auction_period);
 
-		console.log("Bidding " + bid_amount_foobar + " for nft " + nftid1 + " in auction " + auction_period);
+			const bid_amount_asset = Asset.from(bid_amount_foobar);
+			console.log("bid_amount_asset : " + bid_amount_asset)
 
-		const bid_amount_asset = Asset.from(bid_amount_foobar);
-		console.log("bid_amount_asset : " + bid_amount_asset)
-
-		try {
-			const result = await session.transact({
-				transaction: {
-					actions: [
-						{
-							// Contract
-							account: "cronacle",
-							// Action name
-							name: "bid",
-							// Action parameters
-							data: {
-								user: session.auth.actor,
-								nft_id: nftid1,
-								bidamount: bid_amount_foobar
+			try {
+				const result = await session.transact({
+					transaction: {
+						actions: [
+							{
+								// Contract
+								account: "cronacle",
+								// Action name
+								name: "bid",
+								// Action parameters
+								data: {
+									user: session.auth.actor,
+									nft_id: auctionNFTId,
+									bidamount: bid_amount_foobar
+								},
+								authorization: [session.auth],
 							},
-							authorization: [session.auth],
-						},
-					],
-				},
-				broadcast: true,
-			});
-		} catch (e) {
-			console.log(e);
+						],
+					},
+					broadcast: true,
+				});
+				currentAuction = null;
+				await getAuctions();
+				await getBids();
+				
+				
+			} catch (e) {
+				displayRequestError(e);
+			}
 		}
 		
 	}
@@ -565,7 +515,8 @@
 	onMount(() => {
 		
 		reconnect();
-
+		document.getElementById("depositAmount").placeholder =
+		document.getElementById("bidAmount").placeholder = "Input FOOBAR amount";
 		// get the system initialisation time in seconds
 		getSystemInitTime();
 
@@ -575,39 +526,233 @@
 		return () => clearInterval(interval);
 	});
 
-	function canBid()
+	function isRegisteredAndLoggedIn()
 	{
-		return session != null && registered;
+		return isLoggedIn() && isUserRegistered;
 	}
 
-	
+	function displayRequestError(error)
+	{
+		//alert(error);
+		console.log(console.error());
+	}
+
+	function isLoggedIn()
+	{
+		return session != null;
+	}
+
+	function canBid()
+	{
+		return isRegisteredAndLoggedIn() && isBidTime();
+	}
+
+	function isAuctionTimeRunning()
+	{
+		for(let index = 0; index < auctionBids.length; ++index)
+		{
+			var bid = auctionBids[index];
+			if(bid.nftid == auctionNFTId)
+			{
+				return true;
+			}
+			
+		}
+		return false;
+	}
+
+	function getBidStartTime()
+	{
+		let bidStartTime = new Date();
+		for(let index = 0; index < auctionBids.length; ++index)
+		{
+			let bid = auctionBids[index];
+			if(bid.nftid == auctionNFTId)
+			{
+				let bidTime = parseDateTimeString(auctionBids[index].bidtime);
+				if(bidTime.getTime() < bidStartTime.getTime())
+				{
+					bidStartTime = bidTime;
+				}
+					
+			}
+			
+		}
+		return bidStartTime;
+	}
+
+	function parseDateTimeString(dateTimeString)
+	{	
+		return new Date(dateTimeString + 'Z');
+	}
+
+	function canClaim()
+	{
+		let hasHighestBid = false;
+		if(session && auctionBids.length > 0)
+		{
+			hasHighestBid = auctionBids[0].bidder == session.auth.actor;
+		}
+		return currentAuction && currentAuction.winner == "" && hasHighestBid && auctionNFTId != currentAuction.nftid;
+	}
+
+	let fetchDataUpdateTimeSeconds = 0;
+	let fetchDataIntervalSeconds = 10;
+	let auctionNFTId;
+
 	function update()
 	{
 		const now = new Date()
 		now_secs_utc = Math.floor(now / 1000);
-		fetchData();
+		getAuctionTimes();
+		document.getElementById("txtRemainingAuctionTime").innerText = canBid() ?  getRemainingAuctionTimeS() : "Auction in cooldown!";
+		if(canBid())
+		{
+			document.getElementById("txtBidTime").innerText = getRemainingAuctionTimeS();
+		}
+		
+		if(currentAuction && currentAuction.nftid == auctionNFTId && nfts.length > 1 && isAuctionTimeRunning)
+		{
+			let bidStartTime = getBidStartTime().getTime();
+			let bidStartTimeSeconds = Math.floor(bidStartTime / 1000);
+			let start_secs  = bidStartTimeSeconds - ((bidStartTimeSeconds - init_secs_utc) % AUCTION_LENGTH_SECONDS);
+			let end_secs = start_secs + AUCTION_LENGTH_SECONDS;
+
+			let auctionPeriodEnd = new Date(end_secs * 1000);
+			
+			if(auctionPeriodEnd.getTime() < now.getTime())
+			{
+				auctionNFTId = nfts[1].data.asset_id;
+			}
+			else
+			{
+				auctionNFTId = nfts[0].data.asset_id;
+				
+			}
+			
+		}
+		
+		const nft1image = document.getElementById("nft1_image");
+		const nft1Collection = document.getElementById("nft1_collection");
+		const nft1name = document.getElementById("nft1_name");
+		const nft1Id = document.getElementById("nft1_id");
+		const nft1desc = document.getElementById("nft1_desc");
+
+		// display nft 2 info
+		const nft2image = document.getElementById("nft2_image");
+		const nft2name = document.getElementById("nft2_name");
+		const nft2desc = document.getElementById("nft2_desc");
+		
+		let isNextNFTUpcomingAuction = false;
+
+		//update NFTS
+		for(let index = 0; index < nfts.length; ++index)
+		{	
+			
+			let nftdata = nfts[index];
+			let imageSource = "https://ipfs.io/ipfs/" + nftdata.data.template.immutable_data.image;
+			
+			if(nftdata.data.asset_id == auctionNFTId)
+			{
+				var nftTextId = "NFT " + nftdata.data.asset_id;
+				if(nft1Id.textContent != nftTextId)
+				{
+					nft1image.src = imageSource;
+					nft1Id.textContent = nftTextId;
+					nft1Collection.textContent = nftdata.data.collection.name;
+					nft1name.textContent = nftdata.data.template.immutable_data.name +" (" + nftdata.data.template_mint + "/" + nftdata.data.template.issued_supply + ")";
+					nft1desc.textContent = nftdata.data.template.immutable_data.desc;
+				}
+				
+				
+				isNextNFTUpcomingAuction = true;
+			}
+			else if(isNextNFTUpcomingAuction){
+				var nftTextId = "NFT " + nftdata.data.asset_id;
+				if(nft2name.textContent != nftTextId)
+				{
+					nft2image.src = imageSource;
+					nft2name.textContent = nftTextId;
+					// + ": " + nftdata.data.template.immutable_data.name + " (" + nftdata.data.template_mint + "/" + nftdata.data.template.issued_supply + ")"
+				}
+				isNextNFTUpcomingAuction = false;
+				
+			}
+			
+		}
+		bid1 = "";
+		bid2 = "";
+		bid3 = "";
+		let isLeaderboardVisible = false;
+		//update Bids
+		for(let index = 0; index < auctionBids.length; ++index)
+		{
+			var bid = auctionBids[index];
+			if(bid.nftid == auctionNFTId)
+			{
+				isLeaderboardVisible = true;
+				if (index == 0) {
+					bid1 = bid.bidder + " : " + bid.bidamount
+				}
+				else if (index == 1) {
+					bid2 = bid.bidder + " : " + bid.bidamount
+				}
+				else if (index == 2) {
+					bid3 = bid.bidder + " : " + bid.bidamount
+				}
+			}
+			
+		}
+		
+
+		document.getElementById("btnClaim").disabled = !canClaim();
+		
+		
+		document.getElementById("btnBid").disabled = !canBid();
+		document.getElementById("bidAmount").disabled = !isRegisteredAndLoggedIn();
+		document.getElementById("btnDeposit").disabled = !isRegisteredAndLoggedIn();
+		document.getElementById("btnWithdraw").disabled = !isRegisteredAndLoggedIn();
+		document.getElementById("remainingAuctionTimeContainer").style = isAuctionTimeRunning() && isBidTime() ? "visibility:visible; display:block;" : "visibility:hidden; display:none;";
+		document.getElementById("auctionCooldownContainer").style = !isBidTime() ?  "visibility:visible; display:block;" : "visibility:hidden; display:none;";
+		document.getElementById("loggedInAndRegisteredHint").style = !isRegisteredAndLoggedIn() ?  "visibility:visible; display:block;" : "visibility:hidden; display:none;";
+		document.getElementById("creditTransfer").style = isLoggedIn() ?  "visibility:visible; display:block;" : "visibility:hidden; display:none;";
+		
+
+
+		document.getElementById("availableCredit").textContent = getAvailableCredit();
+		document.getElementById("totalCredit").textContent = totalCredit;
+
+		document.getElementById("leaderboard").style = isLeaderboardVisible ? "visibility:visible; display:block;" : "visibility:hidden; display:none;";
+
+		//Update the data every fetchDataIntervalSeconds
+		if(fetchDataUpdateTimeSeconds < now_secs_utc)
+		{
+			fetchDataUpdateTimeSeconds = now_secs_utc + fetchDataIntervalSeconds;
+			fetchData();
+		}
 	}
+
 </script>
 
 <main>
 	{#if session}
 	<div class="auth-section">
 
-		{#if !signedIn && client}
-		<button on:click={signIn} class="auth-button">
+		{#if client && !signedInInternetIdentity}
+		<button on:click={signInInternetIdentity} class="auth-button">
 			Internet Identity Sign In
 		</button>
 		{/if}
 	
-		{#if signedIn}
+		{#if signedInInternetIdentity}
 		<h4>Signed in as: {principal}</h4>
-		<button on:click={signOut} class="auth-button">Sign out</button>
+		<button on:click={signOutInternetIdentity} class="auth-button">Sign out</button>
 		{/if}
 	</div>
 		
-	<h1>Welcome back {session.auth.actor}! {#if registered} You are ready to go! {:else} Please register to start bidding!{/if}</h1>
+	<h1>Welcome back {session.auth.actor}! {#if isUserRegistered} You are ready to go! {:else} Please register to start bidding!{/if}</h1>
 
-		{#if session && !registered}
+		{#if session && !isUserRegistered}
 		<button class="app-button" on:click={reguser}>Register</button>
 		{/if}
 		<button class="app-button" on:click={logout}>Proton Logout</button>
@@ -617,7 +762,39 @@
 	{/if}
 
 	<div id="auction-section">
-		<h3 class="text-4xl">Current Auction</h3>
+		<div>
+			<h2>Claim previous auction</h2>
+			<p><button class="inline-block px-4 py-2 btn-primary rounded rounded-l-none" id="btnClaim" on:click={claimNFT}>Claim NFT</button></p>
+		</div>
+		<div id="creditTransfer" class="bid-form">
+			<h2>Credit Transfer</h2>
+			<table id="creditSection">
+				<tr>
+					<td>	
+						<input class="foobarInputField" id="depositAmount" type="number" min="1"/>
+					</td>
+					<td>
+						<img src="https://foobar.protonchain.com/images/coin.svg" class="inline-block foobar-icon px-4 py-2 " alt="FOOBAR"/>
+					</td>
+					<td>
+						<button class="px-4 py-2 btn-primary rounded rounded-l-none" style="width:10em" id="btnDeposit" on:click={deposit}>Deposit</button>
+					</td>
+				</tr>
+				<tr>
+					<td style="font-size: larger;">
+						Available Credit: <span id="availableCredit">{getAvailableCredit()}</span>
+					</td>
+					<td>
+						<img src="https://foobar.protonchain.com/images/coin.svg" class="inline-block foobar-icon px-4 py-2 " alt="FOOBAR"/>
+					</td>
+					<td>
+						<button class="px-4 py-2 btn-primary rounded rounded-l-none" style="width:10em" id="btnWithdraw" on:click={withdraw}>Withdraw</button>
+					</td>
+				</tr>
+			</table>	
+		</div>
+		
+		<h2>Current Auction | #{auction_period} | <span id="txtRemainingAuctionTime">{getRemainingAuctionTimeS()}</span> </h2>
 		<div id="container1">
 			<!-- svelte-ignore a11y-img-redundant-alt -->
 			
@@ -636,33 +813,39 @@
 				
 				<div class="bid-form" >
 					<h2>Make Your Bid</h2>
-					<h3 id="credit">Available Credit: {credit}</h3>
-					<input id="transferAmount" type="number" min="1"/>
-					<button class="px-4 py-2 btn-primary" id="btnTransfer" on:click={transfer}>Transfer</button>
-					<input id="bidAmount" type="number" min="1"/>
+					<h3 id="remainingAuctionTimeContainer">Remaining Bid Time: <span id="txtBidTime">{getRemainingAuctionTimeS()}</span></h3>
+					<h3 id="auctionCooldownContainer">Auction in cooldown</h3>
+					<p style="font-size: larger;">
+						Total Credit: <span id="totalCredit">{totalCredit}</span>
+					</p>
+					<input class="foobarInputField" id="bidAmount" type="number" min="1"/>
 					<img src="https://foobar.protonchain.com/images/coin.svg" class="inline-block foobar-icon px-4 py-2" alt="FOOBAR"/>
 					<button class="inline-block px-4 py-2 btn-primary rounded rounded-l-none" id="btnBid" on:click={bid}>Bid</button>
-					<p id="hint" class="hint">You need to be logged in and registered to bid for this auction</p>
+					<p id="loggedInAndRegisteredHint" class="hint">You need to be logged in and registered to bid for this auction</p>
 				</div>
 			</div>			
 		</div>
 	</div>
 
-	<div>
-		<strong>Auction Leaderboard</strong>
+	<div id="leaderboard">
+		<h2>Auction Leaderboard</h2>
 		<p>{bid1}</p>
 		<p>{bid2}</p>
 		<p>{bid3}</p>
 	</div>
+	
 
+
+	{#if nfts.length > 1}
 	<div>
-		<h3 class="text-4xl">Next Auction</h3>
+		<h2>Next Auction</h2>
 		<div id="container2" class="container">
 			<!-- svelte-ignore a11y-img-redundant-alt -->
 			<p id="nft2_name"></p>
-			<img src="" id="nft2_image" alt="nft image" width="200px" height="auto" />
+			<img src="" id="nft2_image" alt="next auction nft" width="200px" height="auto" />
 		</div>
 	</div>
+	{/if}
 </main>
 
 <footer class="bg-secondary z-10 relative py-8 text-white">
@@ -702,6 +885,11 @@
 		}
 	}
 
+	#container1
+	{
+		padding: 1em;
+	}
+
 	.auth-section {
         padding: 0.2em 0.6em;
         display: flex;
@@ -730,6 +918,15 @@
 		margin: 0.6em auto;
 	}
 
+	#creditSection
+	{
+		margin: auto auto;
+		row-gap: 2em;
+		table-layout: auto;
+		justify-content: flex-end;
+		text-align: right;
+	}
+
 	.collectionHeadline
 	{
 		font-size: 1em;
@@ -742,6 +939,19 @@
 		font-size: 1.5em;
 		font-weight: bold;
 		margin: 0.4em 0.1em;
+	}
+	
+	.foobarInputField
+	{
+		width: 12em;
+		text-align: right;
+		vertical-align: middle;
+	}
+	
+	.foobarInputField::placeholder 
+	{
+		color: lightgray;
+		font-size: 1em;
 	}
 
 	#auction-section
