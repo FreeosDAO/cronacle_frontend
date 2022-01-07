@@ -13,12 +13,25 @@
 	// endpoints
 	const rpc = new JsonRpc("https://proton.greymass.com", { fetch })
 
+	$: title = "freeos Cronacle"
+
+	$: {
+		document.title = title
+	}
+
 	// timing system data
-	const AUCTION_LENGTH_SECONDS = 600;            // 10 minutes
-	const AUCTION_BIDDING_PERIOD_SECONDS = 540;    // 9 minutes
+	let auctionLengthSeconds = 600;            // 10 minutes - inital value
+	let auctionBiddingPeriodSeconds = 540;    // 9 minutes - initial value
+
+
+	let bitcoinPrice = 0;
 	let init_secs_utc = 0;
 	let now_secs_utc = 0;
 	let auction_period = 0;
+
+	let fetchDataUpdateTimeSeconds = 0;
+	let fetchDataIntervalSeconds = 10;
+	let auctionNFTId = -1;
 
 	// auction data
 	let top_bid = 0;
@@ -27,7 +40,7 @@
 	let bid2 = ""
 	let bid3 = ""
 
-	let currentAuction;
+	let currentAuction = null;
 	let auctionBids = [];
 	let nfts = [];
 
@@ -35,7 +48,9 @@
 	let isUserRegistered = false;
 	let registered_indicator = "";
 	
-
+	const auctionsLoadingText = "Loading auctions...";
+	const auctionsCompleteText = "All auctions are complete. Thank you for your participation!";
+	let auctionsLoaded = false;
 
 	// from Auth
 	let signedInInternetIdentity = false
@@ -106,7 +121,9 @@
 				},
 				broadcast: true,
 			});
+			
 			console.log("Transaction ID", result.processed.id);
+			await getCredits();
 		} catch (error) {
 			displayRequestError(error);
 		}
@@ -137,8 +154,38 @@
 		} catch (error) {
 			displayRequestError(error);
 		}
-		
-		
+	}
+
+
+	async function getParameters() {
+		try {
+			let params = {
+                    json: true,
+                    code: 'cronacle', // account containing smart contract
+                    scope: 'cronacle', // the subset of the table to query
+                    table: 'parameters', // the name of the table
+            }
+
+			let result = await rpc.get_table_rows(params);
+
+			
+			for(let i = 0; i < result.rows.length; i++)
+			{
+				var entry = result.rows[i];
+				console.log("Loaded parameter '"+ entry.paramname + "' with value: " + entry.value);
+				switch(entry.paramname)
+				{
+					case "auctperiod": auctionLengthSeconds = parseInt(entry.value); break;
+					case "bidperiod": auctionBiddingPeriodSeconds = parseInt(entry.value); break;
+					case "minimumbid": bid_increment = parseInt(entry.value); break;
+				}
+			}
+			console.log("parameter loading complete!");
+
+			
+		} catch (error) {
+			displayRequestError(error);
+		}
 	}
 
 	async function claimNFT() {
@@ -162,7 +209,13 @@
 			});
 			console.log("Transaction ID", result.processed.id);
 			auctionBids = null;
+
 			await getBids();
+			nfts = [];
+			await getNFTs();
+			
+			currentAuction = null;
+			await getAuctions();
 		} catch (error) {
 			displayRequestError(error);
 		}
@@ -235,16 +288,32 @@
 	}
 
 	function isBidTime() {
-		let auction_elapsed_secs = (now_secs_utc - init_secs_utc) % AUCTION_LENGTH_SECONDS;
-		let can_bid = auction_elapsed_secs <= AUCTION_BIDDING_PERIOD_SECONDS ? true : false;
+		let auction_elapsed_secs = (now_secs_utc - init_secs_utc) % auctionLengthSeconds;
+		let can_bid = auction_elapsed_secs <= auctionBiddingPeriodSeconds ? true : false;
 
 		return can_bid;
 	}
 
+	function getNFTCollectionURL()
+	{
+		return "https://www.protonmarket.com/user/"+ session.auth.actor;
+	}
+
+	function getFOOBARFaucetURL()
+	{
+		return "https://foobar.protonchain.com/";
+	}
+
+	function getFOOBARExchangeURL()
+	{
+		return "https://proton.alcor.exchange/markets";
+	}
+
+
 	function getRemainingAuctionTimeS()
 	{
-		let auction_elapsed_secs = (now_secs_utc - init_secs_utc) % AUCTION_LENGTH_SECONDS;
-		let remainingSeconds = AUCTION_BIDDING_PERIOD_SECONDS - auction_elapsed_secs;
+		let auction_elapsed_secs = (now_secs_utc - init_secs_utc) % auctionLengthSeconds;
+		let remainingSeconds = auctionBiddingPeriodSeconds - auction_elapsed_secs;
 		return new Date(remainingSeconds * 1000).toISOString().substring(11, 19);
 	}
 
@@ -287,7 +356,7 @@
 		const now = new Date()
     	now_secs_utc = Math.floor(now / 1000)
 
-		auction_period = Math.floor((now_secs_utc - init_secs_utc) / AUCTION_LENGTH_SECONDS) + 1;
+		auction_period = Math.floor((now_secs_utc - init_secs_utc) / auctionLengthSeconds) + 1;
 	}
 
 	async function getNFTs() {
@@ -362,52 +431,30 @@
 
 	async function getAuctions()
 	{
-		if(session)
+		let parameters = {
+				json: true,
+				code: 'cronacle', // account containing smart contract
+				scope: 'cronacle', // the subset of the table to query
+				table: 'auctions', // the name of the table
+				reverse: true,
+				limit: 1 
+		};
+
+		let result = await rpc.get_table_rows(parameters);
+		if(result.rows.length > 0)
 		{
-
-			let parameters = {
-					json: true,
-					code: 'cronacle', // account containing smart contract
-					scope: 'cronacle', // the subset of the table to query
-					table: 'auctions', // the name of the table
-					reverse: true,
-					limit: 1 
-			};
-
-			let result = await rpc.get_table_rows(parameters);
-
-			if(result.rows.length > 0)
-			{
-				currentAuction = result.rows[0];
-				auctionNFTId = currentAuction.nftid;
-			}
+			currentAuction = result.rows[0];
+			auctionNFTId = currentAuction.nftid;
 		}
+		
 	}
 
-	// get user data
-	async function getUser() {
+
+	async function getCredits()
+	{
 		if (session) {
-			console.log('fetching user data for ' + session.auth.actor);
-
-			// is the user registered?
-			let registration_params = {
-					json: true,
-					code: 'cronacle', // account containing smart contract
-					scope: session.auth.actor, // the subset of the table to query
-					table: 'users', // the name of the table
-					lower_bound: session.auth.actor,
-					limit: 1 // limit on number of rows returned
-			};
-
-			let registration_result = await rpc.get_table_rows(registration_params);
-
-			isUserRegistered = registration_result.rows.length == 0 ? false : true;
-			registered_indicator = isUserRegistered == true ? "(registered)" : "";
-			console.log("registered_indicator = " + registered_indicator)
-
-
-			// get the user's credit balance
-			let credit_params = {
+		// get the user's credit balance
+		let credit_params = {
 					json: true,
 					code: 'cronacle', // account containing smart contract
 					scope: session.auth.actor, // the subset of the table to query
@@ -419,20 +466,27 @@
 			let credit_result = await rpc.get_table_rows(credit_params);
 			if (credit_result.rows.length > 0) {
 				totalCredit = credit_result.rows[0].amount;
+				isUserRegistered =  true;
+			
 			} else {
 				totalCredit = "0";
+				isUserRegistered =  false;
 			}
-			
+			registered_indicator = isUserRegistered == true ? "(registered)" : "";
 		}
 	}
 
 
 	// fetch and parse data tables
 	async function fetchData() {
+		await getBitcoinPrice();
 		await getNFTs();
-		await getUser();
+		await getCredits();
 		await getAuctions();
 		await getBids();
+		auctionsLoaded = true;
+		update();
+		
 	}
 
 
@@ -465,6 +519,22 @@
 
 	}
 
+	async function getBitcoinPrice() {
+		var request = new XMLHttpRequest() // inserted the CoinGecko stuff from prior
+
+		// Open a new connection, using the GET request on the URL endpoint
+		request.open('GET', 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin', true)
+		request.onload = function () {
+		// Begin accessing JSON data here
+		var newdata = JSON.parse(this.response)
+		newdata.forEach((object) => {
+			bitcoinPrice = object.current_price;
+		})
+		}
+		// Send request
+		request.send();
+	}
+
 	async function bid() {
 		if(session)
 		{
@@ -491,7 +561,8 @@
 								data: {
 									user: session.auth.actor,
 									nft_id: auctionNFTId,
-									bidamount: bid_amount_foobar
+									bidamount: bid_amount_foobar,
+									btcprice: parseInt(bitcoinPrice)
 								},
 								authorization: [session.auth],
 							},
@@ -519,8 +590,9 @@
 		document.getElementById("bidAmount").placeholder = "Input FOOBAR amount";
 		// get the system initialisation time in seconds
 		getSystemInitTime();
-
+		getParameters();
 		fetchData();	// i'd like to fetch data as soon as the page loads, but this doesn't seem to work (maybe it is, but just taking time)
+		update();
 		const interval = setInterval(update, 100);
 
 		return () => clearInterval(interval);
@@ -588,17 +660,23 @@
 
 	function canClaim()
 	{
-		let hasHighestBid = false;
-		if(session && auctionBids.length > 0)
+		if(session)
 		{
-			hasHighestBid = auctionBids[0].bidder == session.auth.actor;
+			let hasHighestBid = false;
+			if(session && auctionBids.length > 0)
+			{
+				hasHighestBid = auctionBids[0].bidder == session.auth.actor;
+			}
+			return currentAuction && currentAuction.winner == "" && hasHighestBid && (auctionNFTId != currentAuction.nftid || (auctionNFTId == currentAuction.nftid && !isBidTime()));
 		}
-		return currentAuction && currentAuction.winner == "" && hasHighestBid && auctionNFTId != currentAuction.nftid;
+		else
+		{
+			return false;
+		}
+		
 	}
 
-	let fetchDataUpdateTimeSeconds = 0;
-	let fetchDataIntervalSeconds = 10;
-	let auctionNFTId;
+
 
 	function update()
 	{
@@ -611,26 +689,34 @@
 			document.getElementById("txtBidTime").innerText = getRemainingAuctionTimeS();
 		}
 		
-		if(currentAuction && currentAuction.nftid == auctionNFTId && nfts.length > 1 && isAuctionTimeRunning)
+		
+		if(nfts.length > 0 && currentAuction && currentAuction.nftid == auctionNFTId  && isAuctionTimeRunning)
 		{
 			let bidStartTime = getBidStartTime().getTime();
 			let bidStartTimeSeconds = Math.floor(bidStartTime / 1000);
-			let start_secs  = bidStartTimeSeconds - ((bidStartTimeSeconds - init_secs_utc) % AUCTION_LENGTH_SECONDS);
-			let end_secs = start_secs + AUCTION_LENGTH_SECONDS;
+			let start_secs  = bidStartTimeSeconds - ((bidStartTimeSeconds - init_secs_utc) % auctionLengthSeconds);
+			let end_secs = start_secs + auctionLengthSeconds;
 
 			let auctionPeriodEnd = new Date(end_secs * 1000);
 			
 			if(auctionPeriodEnd.getTime() < now.getTime())
 			{
-				auctionNFTId = nfts[1].data.asset_id;
+				if(nfts.length > 1)
+				{
+					auctionNFTId = nfts[1].data.asset_id;
+				}
+				else
+				{
+					auctionNFTId = -1;
+				}
 			}
 			else
 			{
-				auctionNFTId = nfts[0].data.asset_id;
-				
+				auctionNFTId = nfts[0].data.asset_id;	
 			}
 			
 		}
+		
 		
 		const nft1image = document.getElementById("nft1_image");
 		const nft1Collection = document.getElementById("nft1_collection");
@@ -673,7 +759,6 @@
 				{
 					nft2image.src = imageSource;
 					nft2name.textContent = nftTextId;
-					// + ": " + nftdata.data.template.immutable_data.name + " (" + nftdata.data.template_mint + "/" + nftdata.data.template.issued_supply + ")"
 				}
 				isNextNFTUpcomingAuction = false;
 				
@@ -704,41 +789,56 @@
 			
 		}
 		
-
+		if(canClaim())
+		{
+			let claimNFTName = document.getElementById("claim_nft_name");
+			var nftTextId = "NFT " + nfts[0].data.asset_id;
+			if(claimNFTName.textContent != nftTextId)
+			{
+				let imageSource = "https://ipfs.io/ipfs/" + nfts[0].data.template.immutable_data.image;
+				document.getElementById("claim_nft_image").src = imageSource;
+				document.getElementById("claim_nft_name").textContent = nftTextId;
+			}
+		}
+		document.getElementById("claim-section").style = canClaim() ?  "visibility:visible; display:block;" : "visibility:hidden; display:none;";
 		document.getElementById("btnClaim").disabled = !canClaim();
 		
 		
 		document.getElementById("btnBid").disabled = !canBid();
 		document.getElementById("bidAmount").disabled = !isRegisteredAndLoggedIn();
-		document.getElementById("btnDeposit").disabled = !isRegisteredAndLoggedIn();
+		document.getElementById("btnDeposit").disabled = !isLoggedIn();
 		document.getElementById("btnWithdraw").disabled = !isRegisteredAndLoggedIn();
 		document.getElementById("remainingAuctionTimeContainer").style = isAuctionTimeRunning() && isBidTime() ? "visibility:visible; display:block;" : "visibility:hidden; display:none;";
 		document.getElementById("auctionCooldownContainer").style = !isBidTime() ?  "visibility:visible; display:block;" : "visibility:hidden; display:none;";
 		document.getElementById("loggedInAndRegisteredHint").style = !isRegisteredAndLoggedIn() ?  "visibility:visible; display:block;" : "visibility:hidden; display:none;";
 		document.getElementById("creditTransfer").style = isLoggedIn() ?  "visibility:visible; display:block;" : "visibility:hidden; display:none;";
 		
-
-
 		document.getElementById("availableCredit").textContent = getAvailableCredit();
 		document.getElementById("totalCredit").textContent = totalCredit;
 
 		document.getElementById("leaderboard").style = isLeaderboardVisible ? "visibility:visible; display:block;" : "visibility:hidden; display:none;";
 
+		document.getElementById("auction-section").style = nfts.length > 0 && auctionNFTId != -1 && auctionsLoaded ? "visibility:visible; display:block;" : "visibility:hidden; display:none;";
+		document.getElementById("no-auctions-section").style = nfts.length == 0 || auctionNFTId == -1 ? "visibility:visible; display:block;" : "visibility:hidden; display:none;";
+		document.getElementById("no-auctions-section").innerText = auctionsLoaded ? auctionsCompleteText : auctionsLoadingText;
 		//Update the data every fetchDataIntervalSeconds
 		if(fetchDataUpdateTimeSeconds < now_secs_utc)
 		{
+			
 			fetchDataUpdateTimeSeconds = now_secs_utc + fetchDataIntervalSeconds;
 			fetchData();
 		}
 	}
 
 </script>
-
+<svelte:head>
+  <title>{title}</title>
+</svelte:head>
 <main>
-	{#if session}
+
 	<div class="auth-section">
 
-		{#if client && !signedInInternetIdentity}
+		<!--{#if client && !signedInInternetIdentity}
 		<button on:click={signInInternetIdentity} class="auth-button">
 			Internet Identity Sign In
 		</button>
@@ -747,52 +847,57 @@
 		{#if signedInInternetIdentity}
 		<h4>Signed in as: {principal}</h4>
 		<button on:click={signOutInternetIdentity} class="auth-button">Sign out</button>
+		{/if}-->
+
+		{#if session}
+		<a class="auth-button" href="{getNFTCollectionURL()}" target="_blank">Open NFT Collection</a>
+		<a class="auth-button"  href="{getFOOBARFaucetURL()}" target="_blank" >Get free FOOBAR</a>
+		<a class="auth-button"  href="{getFOOBARExchangeURL()}" target="_blank">Buy FOOBAR</a>
+		<button class="auth-button" on:click={logout}>Proton Logout</button>
+	{:else}
+		<button class="auth-button" on:click={login}>Proton Login</button>
 		{/if}
 	</div>
-		
-	<h1>Welcome back {session.auth.actor}! {#if isUserRegistered} You are ready to go! {:else} Please register to start bidding!{/if}</h1>
-
-		{#if session && !isUserRegistered}
-		<button class="app-button" on:click={reguser}>Register</button>
-		{/if}
-		<button class="app-button" on:click={logout}>Proton Logout</button>
-	{:else}
-		<button class="app-button" on:click={login}>Log In</button>
-
+	{#if session}
+	<h1>Welcome back {session.auth.actor}!</h1>
+	<h2> {#if isUserRegistered} You are ready to go! {:else} Please deposit FOOBAR to start bidding!{/if}</h2>
 	{/if}
-
+	<div id="no-auctions-section">
+	</div>
+	<div id="claim-section">
+		<h3>Claim previous auction</h3>
+		<p id="claim_nft_name"></p>
+		<img src="" id="claim_nft_image" alt="claim auction nft" width="200px" height="auto" />
+		<p><button class="inline-block px-4 py-2 btn-primary rounded rounded-l-none" id="btnClaim" on:click={claimNFT}>Claim NFT</button></p>
+	</div>
+	<div id="creditTransfer" class="bid-form">
+		<h3>Credit Transfer</h3>
+		<table id="creditSection">
+			<tr>
+				<td>	
+					<input class="foobarInputField" id="depositAmount" type="number" min="1"/>
+				</td>
+				<td>
+					<img src="https://foobar.protonchain.com/images/coin.svg" class="inline-block foobar-icon px-4 py-2 " alt="FOOBAR"/>
+				</td>
+				<td>
+					<button class="px-4 py-2 btn-primary rounded rounded-l-none" style="width:10em" id="btnDeposit" on:click={deposit}>Deposit</button>
+				</td>
+			</tr>
+			<tr>
+				<td style="font-size: larger;">
+					Available Credit: <span id="availableCredit">{getAvailableCredit()}</span>
+				</td>
+				<td>
+					<img src="https://foobar.protonchain.com/images/coin.svg" class="inline-block foobar-icon px-4 py-2 " alt="FOOBAR"/>
+				</td>
+				<td>
+					<button class="px-4 py-2 btn-primary rounded rounded-l-none" style="width:10em" id="btnWithdraw" on:click={withdraw}>Withdraw</button>
+				</td>
+			</tr>
+		</table>	
+	</div>
 	<div id="auction-section">
-		<div>
-			<h2>Claim previous auction</h2>
-			<p><button class="inline-block px-4 py-2 btn-primary rounded rounded-l-none" id="btnClaim" on:click={claimNFT}>Claim NFT</button></p>
-		</div>
-		<div id="creditTransfer" class="bid-form">
-			<h2>Credit Transfer</h2>
-			<table id="creditSection">
-				<tr>
-					<td>	
-						<input class="foobarInputField" id="depositAmount" type="number" min="1"/>
-					</td>
-					<td>
-						<img src="https://foobar.protonchain.com/images/coin.svg" class="inline-block foobar-icon px-4 py-2 " alt="FOOBAR"/>
-					</td>
-					<td>
-						<button class="px-4 py-2 btn-primary rounded rounded-l-none" style="width:10em" id="btnDeposit" on:click={deposit}>Deposit</button>
-					</td>
-				</tr>
-				<tr>
-					<td style="font-size: larger;">
-						Available Credit: <span id="availableCredit">{getAvailableCredit()}</span>
-					</td>
-					<td>
-						<img src="https://foobar.protonchain.com/images/coin.svg" class="inline-block foobar-icon px-4 py-2 " alt="FOOBAR"/>
-					</td>
-					<td>
-						<button class="px-4 py-2 btn-primary rounded rounded-l-none" style="width:10em" id="btnWithdraw" on:click={withdraw}>Withdraw</button>
-					</td>
-				</tr>
-			</table>	
-		</div>
 		
 		<h2>Current Auction | #{auction_period} | <span id="txtRemainingAuctionTime">{getRemainingAuctionTimeS()}</span> </h2>
 		<div id="container1">
@@ -809,15 +914,21 @@
 				<p id="nft1_desc" class="auction-nft-description"></p>
 				<p id="nft1_id" class="auction-footer auction-container"></p>
 			</div>
+			<div id="leaderboard">
+				<h2>Auction Leaderboard</h2>
+				<p>{bid1}</p>
+				<p>{bid2}</p>
+				<p>{bid3}</p>
+			</div>
 			<div id="bid-container">
 				
 				<div class="bid-form" >
-					<h2>Make Your Bid</h2>
-					<h3 id="remainingAuctionTimeContainer">Remaining Bid Time: <span id="txtBidTime">{getRemainingAuctionTimeS()}</span></h3>
-					<h3 id="auctionCooldownContainer">Auction in cooldown</h3>
+					<h3>Make Your Bid</h3>
 					<p style="font-size: larger;">
 						Total Credit: <span id="totalCredit">{totalCredit}</span>
 					</p>
+					<p style="font-size: larger;" id="remainingAuctionTimeContainer">Remaining Bid Time: <span id="txtBidTime">{getRemainingAuctionTimeS()}</span></p>
+					<p style="font-size: larger;" id="auctionCooldownContainer">Auction in cooldown</p>
 					<input class="foobarInputField" id="bidAmount" type="number" min="1"/>
 					<img src="https://foobar.protonchain.com/images/coin.svg" class="inline-block foobar-icon px-4 py-2" alt="FOOBAR"/>
 					<button class="inline-block px-4 py-2 btn-primary rounded rounded-l-none" id="btnBid" on:click={bid}>Bid</button>
@@ -826,15 +937,6 @@
 			</div>			
 		</div>
 	</div>
-
-	<div id="leaderboard">
-		<h2>Auction Leaderboard</h2>
-		<p>{bid1}</p>
-		<p>{bid2}</p>
-		<p>{bid3}</p>
-	</div>
-	
-
 
 	{#if nfts.length > 1}
 	<div>
@@ -847,8 +949,7 @@
 	</div>
 	{/if}
 </main>
-
-<footer class="bg-secondary z-10 relative py-8 text-white">
+<footer id="footer" class="bg-secondary z-10 relative py-8 text-white">
 	<div id="footer-logo-container">
 		<a href="https://freeos.io" target="_blank" rel="noopener" class="inline-flex mx-auto flex-col justify-center bg-secondary p-8 rounded-freeos-logo">
 			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 84 84" class="freeos-logo-icon fill-current text-white" style="width:8rem">
@@ -865,19 +966,12 @@
 <style>
 	main {
 		text-align: center;
-		padding: 1em 0;
+		padding: 6rem 0 14rem 0;
 		max-width: 240px;
 		margin: 0 auto;
 		color: var(--color-text);
 	}
-	
 
-
-	.app-button {
-		font-weight: 600;
-		font-size: 1.125rem;
-		padding: 10px 25px;
-	}
 
 	@media (min-width: 400px) {
 		main {
@@ -1043,6 +1137,7 @@
         color: black;
         background: white;
         padding: 0 2em;
+		margin: 1em;
         border-radius: 60px;
         font-size: 1em;
         line-height: 40px;
@@ -1055,19 +1150,44 @@
         align-items: center;
     }
 
+	#claim-section
+	{
+		padding: 0.1em 0.1em;
+		margin: 1em;
+	}
+
+	#no-auctions-section
+	{
+		margin: 2em;
+		justify-content: center;
+		text-align:center;
+		text-color: var(--color-text);
+	}
+	
+	#footer
+	{
+		position:fixed;
+		bottom: 0px;
+		left:0px;
+		right:0px;
+		height: 12rem;
+	}
+
 	#footer-logo-container
 	{
 		margin: 2em 0;
 		display: flex;   
 		justify-content: center;
 		text-align:center;
+		bottom: 3rem;
+		position:relative;
 	}
 
 	.rounded-freeos-logo {
 		border-radius: 9999px;
 		border-style: solid;
 		border-color: var(--color-secondary);
-		border-width: 2rem;
+		border-width: 0.15rem;
 		transform: translateY(-2rem);
 		color: whitesmoke;
 		fill: whitesmoke;
