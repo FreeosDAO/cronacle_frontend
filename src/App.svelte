@@ -683,7 +683,7 @@
 		const now = new Date()
 		now_secs_utc = Math.floor(now / 1000);
 		getAuctionTimes();
-		document.getElementById("txtRemainingAuctionTime").innerText = canBid() ?  getRemainingAuctionTimeS() : "Auction in cooldown!";
+		document.getElementById("txtRemainingAuctionTime").innerText = isBidTime() ?  getRemainingAuctionTimeS() : "Auction in cooldown!";
 		if(canBid())
 		{
 			document.getElementById("txtBidTime").innerText = getRemainingAuctionTimeS();
