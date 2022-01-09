@@ -20,5 +20,10 @@ actor {
         return ic_id # " and " # proton_account # ", number of users = " # Nat.toText(numusers);
     };
 
+    public func storecls(proton_cls : Nat) : async Text {
+        let cls = proton_cls;
+
+        return Nat.toText(cls);
+    }
     
 };
