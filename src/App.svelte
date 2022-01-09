@@ -123,6 +123,7 @@
 			});
 			
 			console.log("Transaction ID", result.processed.id);
+			document.getElementById("depositAmount").value = "";
 			await getCredits();
 		} catch (error) {
 			displayRequestError(error);
@@ -346,7 +347,7 @@
 
         let system_result = await rpc.get_table_rows(system_params);
 
-        let system_init_date = Date.parse(system_result.rows[0].init);
+        let system_init_date = new Date(system_result.rows[0].init + 'Z');
 
         init_secs_utc = Math.floor(system_init_date / 1000);
 		console.log("system init utc seconds = " + init_secs_utc);
@@ -633,7 +634,7 @@
 		return false;
 	}
 
-	function getBidStartTime()
+	function getFirstBidTime()
 	{
 		let bidStartTime = new Date();
 		for(let index = 0; index < auctionBids.length; ++index)
@@ -683,7 +684,7 @@
 		const now = new Date()
 		now_secs_utc = Math.floor(now / 1000);
 		getAuctionTimes();
-		document.getElementById("txtRemainingAuctionTime").innerText = isBidTime() ?  getRemainingAuctionTimeS() : "Auction in cooldown!";
+		document.getElementById("txtRemainingAuctionTime").innerText = canBid() ?  getRemainingAuctionTimeS() : "Auction in cooldown!";
 		if(canBid())
 		{
 			document.getElementById("txtBidTime").innerText = getRemainingAuctionTimeS();
@@ -692,9 +693,11 @@
 		
 		if(nfts.length > 0 && currentAuction && currentAuction.nftid == auctionNFTId  && isAuctionTimeRunning)
 		{
-			let bidStartTime = getBidStartTime().getTime();
-			let bidStartTimeSeconds = Math.floor(bidStartTime / 1000);
-			let start_secs  = bidStartTimeSeconds - ((bidStartTimeSeconds - init_secs_utc) % auctionLengthSeconds);
+			let firstBidTime = getFirstBidTime().getTime();
+			let firstBidTimeSeconds = Math.floor(firstBidTime / 1000);
+
+			let start_secs  = firstBidTimeSeconds - ((firstBidTimeSeconds - init_secs_utc) % auctionLengthSeconds);
+
 			let end_secs = start_secs + auctionLengthSeconds;
 
 			let auctionPeriodEnd = new Date(end_secs * 1000);
@@ -927,8 +930,8 @@
 					<p style="font-size: larger;">
 						Total Credit: <span id="totalCredit">{totalCredit}</span>
 					</p>
-					<p style="font-size: larger;" id="remainingAuctionTimeContainer">Remaining Bid Time: <span id="txtBidTime">{getRemainingAuctionTimeS()}</span></p>
-					<p style="font-size: larger;" id="auctionCooldownContainer">Auction in cooldown</p>
+					<p style="font-size: larger;"></p><h3 id="remainingAuctionTimeContainer">Remaining Bid Time: <span id="txtBidTime">{getRemainingAuctionTimeS()}</span></h3>
+					<h3 id="auctionCooldownContainer">Auction in cooldown</h3>
 					<input class="foobarInputField" id="bidAmount" type="number" min="1"/>
 					<img src="https://foobar.protonchain.com/images/coin.svg" class="inline-block foobar-icon px-4 py-2" alt="FOOBAR"/>
 					<button class="inline-block px-4 py-2 btn-primary rounded rounded-l-none" id="btnBid" on:click={bid}>Bid</button>
@@ -936,20 +939,21 @@
 				</div>
 			</div>			
 		</div>
+		{#if nfts.length > 1}
+		<div>
+			<h2>Next Auction</h2>
+			<div id="container2" class="container">
+				<!-- svelte-ignore a11y-img-redundant-alt -->
+				<p id="nft2_name"></p>
+				<img src="" id="nft2_image" alt="next auction nft" width="200px" height="auto" />
+			</div>
+		</div>
+		{/if}
 	</div>
 
-	{#if nfts.length > 1}
-	<div>
-		<h2>Next Auction</h2>
-		<div id="container2" class="container">
-			<!-- svelte-ignore a11y-img-redundant-alt -->
-			<p id="nft2_name"></p>
-			<img src="" id="nft2_image" alt="next auction nft" width="200px" height="auto" />
-		</div>
-	</div>
-	{/if}
+	
 </main>
-<footer id="footer" class="bg-secondary z-10 relative py-8 text-white">
+<footer id="footer" class="z-10 text-white">
 	<div id="footer-logo-container">
 		<a href="https://freeos.io" target="_blank" rel="noopener" class="inline-flex mx-auto flex-col justify-center bg-secondary p-8 rounded-freeos-logo">
 			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 84 84" class="freeos-logo-icon fill-current text-white" style="width:8rem">
@@ -1166,11 +1170,12 @@
 	
 	#footer
 	{
-		position:fixed;
-		bottom: 0px;
+		position:relative;
+		bottom: 0;
 		left:0px;
 		right:0px;
-		height: 12rem;
+		height: 10rem;
+		background-color: var(--color-secondary);
 	}
 
 	#footer-logo-container
