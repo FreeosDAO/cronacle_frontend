@@ -95,6 +95,11 @@
 		console.log("Auth. signed out. principal id = " + principal)
 	}
 
+	async function ic_storecls(proton_cls) {
+		const dfinity_result = await spda.storecls(proton_cls)
+		console.log(dfinity_result)
+	}
+
 	onMount(initAuth)	// TODO - merge onMount code
 
 	async function deposit() {
