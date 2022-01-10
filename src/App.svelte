@@ -132,6 +132,8 @@
 			console.log("Transaction ID", result.processed.id);
 			document.getElementById("depositAmount").value = "";
 			await getCredits();
+			await getSystemTableValues();
+			await ic_storecls();
 		} catch (error) {
 			displayRequestError(error);
 		}
@@ -234,7 +236,7 @@
 
 	// Constants
 	const appIdentifier = "cronacle";
-	let link, session;
+	let link, session = null;
 
 	async function createLink({ restoreSession }) {
 		try {
@@ -284,7 +286,7 @@
 
 	async function logout() {
 		await link.removeSession(appIdentifier, session.auth);
-		session = undefined;
+		session = null;
 	}
 
 	async function reconnect() {
@@ -595,8 +597,6 @@
 				currentAuction = null;
 				await getAuctions();
 				await getBids();
-				await getSystemTableValues();
-				await ic_storecls();
 				
 				
 			} catch (e) {
