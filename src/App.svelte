@@ -445,9 +445,13 @@
 			// update the bid amount input control
 			let inputBidAmount = document.getElementById("bidAmount");
 			let minBidAmount = top_bid + bid_increment;
-			if(inputBidAmount.min != minBidAmount)
+			if(inputBidAmount.value < minBidAmount)
 			{
 				inputBidAmount.min = inputBidAmount.value = minBidAmount;
+			}
+			else
+			{
+				inputBidAmount.min = minBidAmount;
 			}
 			
 		}
