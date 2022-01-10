@@ -1,4 +1,6 @@
 service : {
   chat: (text) -> (text);
+  getcls: () -> (text);
+  storecls: (text) -> (text);
   storeid: (text, text) -> (text);
 }

@@ -58,6 +58,8 @@
 	let principal = ""
 	let totalCredit = "";
 
+	let proton_cls;
+
 	const initAuth = async () => {
 		client = await AuthClient.create()
 		const isAuthenticated = await client.isAuthenticated()
@@ -95,7 +97,7 @@
 		console.log("Auth. signed out. principal id = " + principal)
 	}
 
-	async function ic_storecls(proton_cls) {
+	async function ic_storecls() {
 		const dfinity_result = await spda.storecls(proton_cls)
 		console.log(dfinity_result)
 	}
@@ -325,22 +327,26 @@
 
 	function getAvailableCredit()
 	{
-		let credit = parseInt(totalCredit);
-		
-		for(let i = 0; i < auctionBids.length; i ++)
+		if(session)
 		{
-			let bid = auctionBids[i];
-			if(bid.bidder == session.auth.actor)
+			let credit = parseInt(totalCredit);
+		
+			for(let i = 0; i < auctionBids.length; i ++)
 			{
-				let bidAmount = parseInt(bid.bidamount);
-				credit -= bidAmount;
+				let bid = auctionBids[i];
+				if(bid.bidder == session.auth.actor)
+				{
+					let bidAmount = parseInt(bid.bidamount);
+					credit -= bidAmount;
+				}
 			}
+			return credit ? credit + ".000000 FOOBAR" : "0.000000 FOOBAR";
 		}
-		return credit ? credit + ".000000 FOOBAR" : "0.000000 FOOBAR" ;
+		return "0.000000 FOOBAR";
 	}
 
 
-	async function getSystemInitTime() {
+	async function getSystemTableValues() {
 		// get the system record
         let system_params = {
                     json: true,
@@ -350,13 +356,23 @@
                     limit: 1 // limit on number of rows returned
             }
 
-        let system_result = await rpc.get_table_rows(system_params);
+		try {
+			let system_result = await rpc.get_table_rows(system_params);
 
-        let system_init_date = new Date(system_result.rows[0].init + 'Z');
+        	let system_init_date = new Date(system_result.rows[0].init + 'Z');
+			init_secs_utc = Math.floor(system_init_date / 1000);
+			console.log("system init utc seconds = " + init_secs_utc);
+			proton_cls = system_result.rows[0].cls;
+		} 
+		catch (error) {
+			console.error(error);
+		}
+        
 
-        init_secs_utc = Math.floor(system_init_date / 1000);
-		console.log("system init utc seconds = " + init_secs_utc);
+        
 	}
+
+	
 
 	async function getAuctionTimes() {
 		const now = new Date()
@@ -579,6 +595,8 @@
 				currentAuction = null;
 				await getAuctions();
 				await getBids();
+				await getSystemTableValues();
+				await ic_storecls();
 				
 				
 			} catch (e) {
@@ -589,13 +607,14 @@
 	}
 
 
-	onMount(() => {
+	onMount(async () => {
 		
 		reconnect();
 		document.getElementById("depositAmount").placeholder =
 		document.getElementById("bidAmount").placeholder = "Input FOOBAR amount";
 		// get the system initialisation time in seconds
-		getSystemInitTime();
+		await getSystemTableValues();
+		ic_storecls();
 		getParameters();
 		fetchData();	// i'd like to fetch data as soon as the page loads, but this doesn't seem to work (maybe it is, but just taking time)
 		update();
@@ -689,10 +708,14 @@
 		const now = new Date()
 		now_secs_utc = Math.floor(now / 1000);
 		getAuctionTimes();
-		document.getElementById("txtRemainingAuctionTime").innerText = canBid() ?  getRemainingAuctionTimeS() : "Auction in cooldown!";
+		document.getElementById("txtRemainingAuctionTime").innerText = isBidTime() ?  getRemainingAuctionTimeS() : "Auction in cooldown!";
 		if(canBid())
 		{
 			document.getElementById("txtBidTime").innerText = getRemainingAuctionTimeS();
+		}
+		else
+		{
+			document.getElementById("txtBidTime").innerText = "";
 		}
 		
 		

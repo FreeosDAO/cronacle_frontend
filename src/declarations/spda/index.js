@@ -13,7 +13,6 @@ export const canisterId = process.env.SPDA_CANISTER_ID;
  * @return {import("@dfinity/agent").ActorSubclass<import("./spda.did.js")._SERVICE>}
  */
  export const createActor = (canisterId, options) => {
-   console.log(options);
   const agent = new HttpAgent({ ...options?.agentOptions });
   
   // Fetch root key for certificate validation during development

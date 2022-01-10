@@ -9,10 +9,11 @@
         "spda"
       ],
       "frontend": {
-        "entrypoint": "src/main.js"
+        "entrypoint": "public/index.html"
       },
       "source": [
-        "src/"
+        "src/",
+        "public/"
       ],
       "type": "assets"
     }

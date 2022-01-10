@@ -6,6 +6,7 @@ import Text "mo:base/Text";
 actor {
 
     let users = HashMap.HashMap<Text, Text>(16, Text.equal, Text.hash);
+    stable var cls : Text = "";
 
     public func chat(name : Text) : async Text {
         return "Hi there, " # name # "!";
@@ -20,10 +21,14 @@ actor {
         return ic_id # " and " # proton_account # ", number of users = " # Nat.toText(numusers);
     };
 
-    public func storecls(proton_cls : Nat) : async Text {
-        let cls = proton_cls;
+    public func storecls(proton_cls : Text) : async Text {
+        cls := proton_cls;
 
-        return Nat.toText(cls);
-    }
+        return cls;
+    };
+
+     public func getcls() : async Text {
+        return cls;
+    };
     
 };
