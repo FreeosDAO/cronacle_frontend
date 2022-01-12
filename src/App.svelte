@@ -29,6 +29,25 @@
 	let now_secs_utc = 0;
 	let auction_period = 0;
 
+	let selectorOptionsTemplate = {
+					appName: "freeos cronacle",
+					appLogo: "https://freeos.io/freeos-appLogo.svg?v=3",
+					customStyleOptions: {
+						modalBackgroundColor: "#F4F7FA",
+						logoBackgroundColor: "white",
+						isLogoRound: true,
+						optionBackgroundColor: "white",
+						optionFontColor: "black",
+						primaryFontColor: "black",
+						secondaryFontColor: "#6B727F",
+						linkColor: "#752EEB",
+					}};
+
+	let transportOptionsTemplate =  {
+					requestAccount: "cronacle",
+					requestStatus: true,
+				};
+
 	let fetchDataUpdateTimeSeconds = 0;
 	let fetchDataIntervalSeconds = 10;
 	let auctionNFTId = -1;
@@ -126,6 +145,8 @@
 						},
 					],
 				},
+				transportOptions: transportOptionsTemplate,
+				selectorOptions: selectorOptionsTemplate,
 				broadcast: true,
 			});
 			
@@ -158,6 +179,8 @@
 						},
 					],
 				},
+				transportOptions: transportOptionsTemplate,
+				selectorOptions: selectorOptionsTemplate,
 				broadcast: true,
 			});
 			console.log("Transaction ID", result.processed.id);
@@ -245,25 +268,8 @@
 					endpoints: ["https://proton.greymass.com"],
 					restoreSession,
 				},
-				transportOptions: {
-					requestAccount: "myprotonacc", // Your proton account
-					requestStatus: true,
-				},
-				selectorOptions: {
-					appName: "Cronacle",
-					appLogo:
-						"https://freeos.io/freeos-appLogo.svg?v=3",
-					customStyleOptions: {
-						modalBackgroundColor: "#F4F7FA",
-						logoBackgroundColor: "white",
-						isLogoRound: true,
-						optionBackgroundColor: "white",
-						optionFontColor: "black",
-						primaryFontColor: "black",
-						secondaryFontColor: "#6B727F",
-						linkColor: "#752EEB",
-					},
-				},
+				transportOptions: transportOptionsTemplate,
+				selectorOptions: selectorOptionsTemplate,
 			});
 			link = result.link;
 			session = result.session;
@@ -280,8 +286,8 @@
 		} catch (error) {
 			displayRequestError(error);
 		}
-		
-		console.log("User authorization:", session.auth); // { actor: 'fred', permission: 'active }
+		if(session)
+			console.log("User authorization:", session.auth); // { actor: 'fred', permission: 'active }
 	}
 
 	async function logout() {
@@ -292,8 +298,8 @@
 	async function reconnect() {
 		try {
 			await createLink({ restoreSession: true });
-		} catch (e) {
-			displayRequestError(e);
+		} catch (error) {
+			displayRequestError(error);
 		}
 	}
 
@@ -408,7 +414,7 @@
 				nfts[index] = nftdata;
 				
 			} catch (error) {
-				displayRequestError(e);
+				displayRequestError(error);
 			}
 		}
 	}
@@ -596,6 +602,8 @@
 							},
 						],
 					},
+					transportOptions: transportOptionsTemplate,
+					selectorOptions: selectorOptionsTemplate,
 					broadcast: true,
 				});
 				currentAuction = null;
@@ -635,7 +643,7 @@
 	function displayRequestError(error)
 	{
 		//alert(error);
-		console.log(console.error());
+		console.error(error);
 	}
 
 	function isLoggedIn()
@@ -788,7 +796,7 @@
 				
 				isNextNFTUpcomingAuction = true;
 			}
-			else if(isNextNFTUpcomingAuction){
+			else if(isNextNFTUpcomingAuction && nft2name){
 				var nftTextId = "NFT " + nftdata.data.asset_id;
 				if(nft2name.textContent != nftTextId)
 				{
