@@ -12,6 +12,38 @@ body {
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }
 
+h1 {
+	padding: 0.15em 0 0.15em;
+	margin: 0 0;
+	text-transform: none;
+	font-size: 3.2em;
+	font-weight: 100;
+	
+}
+
+h1, h2, h3, h4 {
+	color: var(--color-text);
+}
+
+h2 {
+	padding: 0.1em 0 0.1em;
+	margin: 0 0;
+	font-size: 2.8em;
+	font-weight: 50;
+}
+
+h3 {
+	padding: 0.1em;
+	margin: 0 0;
+	font-size: 2.2em;
+	font-weight: 50;
+}
+h4 {
+	padding: 0.5em;
+	font-size: 1em;
+	font-weight: 30;
+}
+
 a {
 	color: rgb(0,100,200);
 	text-decoration: none;
@@ -34,7 +66,7 @@ input, button, select, textarea {
 	font-size: inherit;
 	-webkit-padding: 0.4em 0;
 	padding: 0.4em;
-	margin: 0 0 0.5em 0;
+	margin: 0.4em 0 0.4em 0;
 	box-sizing: border-box;
 	border: 1px solid #ccc;
 	border-radius: 2px;
@@ -45,21 +77,108 @@ input:disabled {
 }
 
 button {
-	color: #333;
-	background-color: #f4f4f4;
-	outline: none;
+	background-color: var(--color-primary);
+	border-radius: 0.75rem;
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	padding: 0.75rem 3rem;
+	--tw-text-opacity: 1;
+	color: rgba(255,255,255,var(--tw-text-opacity));
+	--tw-translate-x: 0;
+	--tw-translate-y: 0;
+	--tw-rotate: 0;
+	--tw-skew-x: 0;
+	--tw-skew-y: 0;
+	--tw-scale-x: 1;
+	--tw-scale-y: 1;
+	transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;
+	transition-timing-function: cubic-bezier(.4,0,.2,1);
+	transition-duration: .15s;
+}
+
+.btn-primary {
+	background-color: var(--color-primary);
+	border-radius: 0.75rem;
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	padding: 0.75rem 3rem;
+	--tw-text-opacity: 1;
+	color: rgba(255,255,255,var(--tw-text-opacity));
+	--tw-translate-x: 0;
+	--tw-translate-y: 0;
+	--tw-rotate: 0;
+	--tw-skew-x: 0;
+	--tw-skew-y: 0;
+	--tw-scale-x: 1;
+	--tw-scale-y: 1;
+	transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;
+	transition-property: background-color,border-color,color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;
+	transition-timing-function: cubic-bezier(.4,0,.2,1);
+	transition-duration: .15s;
 }
 
 button:disabled {
-	color: #999;
+	color: var(--color-disabled-text);
+	background-color: var(--color-disabled);
 }
 
 button:not(:disabled):active {
-	background-color: #ddd;
+	background-color: var(--color-tertiary);
 }
 
 button:focus {
-	border-color: #666;
+	border-color: #222;
+	border-style: double;
 }
 
-main.svelte-jjpxov{text-align:center;padding:1em;max-width:240px;margin:0 auto}h1.svelte-jjpxov{color:#ff3e00;padding:2em;text-transform:uppercase;font-size:2em;font-weight:100}h2.svelte-jjpxov{color:black;padding:1em;font-size:0.5em;font-weight:50}.app-button.svelte-jjpxov{font-weight:600;font-size:1.125rem;padding:10px 25px}@media(min-width: 640px){main.svelte-jjpxov{max-width:none}}.auth-section.svelte-jjpxov{padding:1em;display:flex;justify-content:flex-end;align-items:center;text-align:right;position:fixed;top:0;right:0}.auth-button.svelte-jjpxov{color:black;background:white;padding:0 2em;border-radius:60px;font-size:1em;line-height:40px;height:33px;outline:0;border:0;cursor:pointer;text-decoration:underline;display:flex;align-items:center}
+.p-8 {
+    padding: 2rem;
+}
+.mx-auto {
+    margin-left: auto;
+    margin-right: auto;
+}
+.justify-center {
+    justify-content: center;
+}
+.flex-col {
+    flex-direction: column;
+}
+.inline-flex {
+    display: inline-flex;
+}
+.text-4xl {
+	font-family: futura-pt,sans-serif;
+	font-style: normal;
+	font-weight: 600;
+}
+.bg-secondary {
+    background-color: #39c2ff;
+    background-color: var(--color-secondary);
+}
+
+.text-white {
+    --tw-text-opacity: 1;
+    color: rgba(255,255,255,var(--tw-text-opacity));
+}
+
+:root {
+	--color-primary: #00a1ed;
+	--color-secondary: #39c2ff;
+	--color-tertiary: #d5f2ff;
+	--color-text: #414141;
+	--color-disabled: rgba(243,243,243,var(--tw-bg-opacity));
+	--color-disabled-text: #414141;
+	-moz-tab-size: 4;
+	-o-tab-size: 4;
+	tab-size: 4;
+}
+
+
+table.svelte-dsaf7t.svelte-dsaf7t{width:100%}.isSortable.svelte-dsaf7t.svelte-dsaf7t{cursor:pointer}.isClickable.svelte-dsaf7t.svelte-dsaf7t{cursor:pointer}tr.svelte-dsaf7t th select.svelte-dsaf7t{width:100%}
+main.svelte-qdw9xm{text-align:center;padding:6rem 0 14rem 0;margin:0 auto;color:var(--color-text)}@media(min-width: 420px){main.svelte-qdw9xm{max-width:auto}#nft1_image.svelte-qdw9xm{width:400px}.auction-item-display.svelte-qdw9xm{width:420px}}@media only screen and (max-width: 420px){main.svelte-qdw9xm{max-width:240px}#nft1_image.svelte-qdw9xm{width:200px}.auction-item-display.svelte-qdw9xm{width:220px}h1.svelte-qdw9xm{font-size:2em}h2.svelte-qdw9xm{font-size:1.5em}h3.svelte-qdw9xm{font-size:1.2em}}#container1.svelte-qdw9xm{padding:1em}.auth-section.svelte-qdw9xm{padding:0.2em 0.6em;white-space:nowrap;display:flex;flex-wrap:wrap-reverse;justify-content:flex-end;align-items:center;text-align:right;position:fixed;width:auto;background-color:whitesmoke;box-shadow:0 0.4rem 0.4rem rgb(0 0 0 / 5%);top:0;right:0;left:0;z-index:50}.hint.svelte-qdw9xm{border-left-style:solid;border-left-width:0.3em;padding:0.5em 0.5em;border-left-color:var(--color-primary);background-color:#414141;color:whitesmoke;width:fit-content;margin:0.6em auto}#creditSection.svelte-qdw9xm{margin:auto auto;justify-content:center;display:flex;flex-wrap:wrap}.creditRow.svelte-qdw9xm{padding:0.8em 0.8em;margin:0.5em;border:1px solid var(--color-primary);border-radius:1em;justify-content:space-between;flex-direction:column;align-content:center;align-items:center;text-align:center;width:300px;height:270px;display:flex}.collectionHeadline.svelte-qdw9xm{font-size:1em;font-weight:bold;margin:0.4em 0.1em}.nameHeadline.svelte-qdw9xm{font-size:1.5em;font-weight:bold;margin:0.4em 0.1em}.foobarInputField.svelte-qdw9xm{width:8em;text-align:right;vertical-align:middle}.foobarInputField.svelte-qdw9xm::placeholder{color:lightgray;font-size:1em}#auction-section.svelte-qdw9xm{padding:1em 0;display:block;justify-content:flex-start;align-items:center;text-align:center}.auction-nft-image.svelte-qdw9xm{display:block;margin:0 0;padding:0.5em 0.5em;line-height:0;background-color:var(--color-tertiary)}.auction-nft-description.svelte-qdw9xm{margin:0 0;padding:0.6em 0.6em}.auction-item-display.svelte-qdw9xm{padding:0;margin:auto;align-items:center;text-align:center;color:var(--color-text);border-radius:15px;border-color:var(--color-secondary);border-style:solid;border-width:0.01em;background-color:white}.auction-container.svelte-qdw9xm{background-color:var(--color-secondary);padding:0.6em 0.6em;margin:0 0;color:whitesmoke;text-transform:none;font-size:1em;font-weight:bold;display:block}.auction-header.svelte-qdw9xm{border-top-left-radius:10px;border-top-right-radius:10px}.auction-footer.svelte-qdw9xm{border-bottom-left-radius:10px;border-bottom-right-radius:10px}#bid-container.svelte-qdw9xm{margin:auto auto}.bid-form.svelte-qdw9xm{margin:1em 0;padding:0.6em 0.6em;background-color:var(--color-tertiary)}.token-icon.svelte-qdw9xm{width:32px;padding:0em 0.6em 0 0;left:3px;height:32px;outline:0;vertical-align:middle;border:0;position:relative}.auth-button.svelte-qdw9xm{color:black;background:white;padding:0 2em;margin:1em;border-radius:60px;font-size:1em;line-height:40px;height:33px;outline:0;border:0;cursor:pointer;text-decoration:underline;display:flex;align-items:center}.auth-link.svelte-qdw9xm{color:black;padding:0 0.25em;margin:0.2em;border-radius:60px;font-size:1em;line-height:40px;height:33px;outline:0;border:0;cursor:pointer;text-decoration:underline;display:flex;align-items:center}#claim-section.svelte-qdw9xm{padding:0.1em 0.1em;margin:1em}#no-auctions-section.svelte-qdw9xm{margin:2em;justify-content:center;text-align:center;text-color:var(--color-text)}#footer.svelte-qdw9xm{position:relative;bottom:0;left:0px;right:0px;height:10rem;background-color:var(--color-secondary)}#footer-logo-container.svelte-qdw9xm{margin:2em 0;display:flex;justify-content:center;text-align:center;bottom:3rem;position:relative}.rounded-freeos-logo.svelte-qdw9xm{border-radius:9999px;border-style:solid;border-color:var(--color-secondary);border-width:0.15rem;transform:translateY(-2rem);color:whitesmoke;fill:whitesmoke}.rounded-l-none.svelte-qdw9xm{border-top-left-radius:0;border-bottom-left-radius:0}.rounded.svelte-qdw9xm{border-radius:0.25rem}
